@@ -68,6 +68,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 </style>
 </head>
 <body>
+<div id="jsErr" style="display:none;background:#5a1414;color:#fff;padding:10px;font:13px system-ui"></div>
+<script>window.onerror=function(m,u,l){var e=document.getElementById('jsErr');e.style.display='block';e.textContent='Error: '+m+' (línea '+l+')';};</script>
 <div class="wrap">
   <header>
     <h1>Videolaringoscopia e intubación <span class="modechip" id="modeChip">táctil</span><small>Simulador de destrezas para enfermería · vía aérea adulta</small></h1>

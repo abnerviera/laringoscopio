@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prueba de giroscopio</title>
+<style>body{font-family:system-ui;background:#0b1118;color:#e6edf3;padding:20px;font-size:18px}button{font-size:18px;padding:14px 18px;border-radius:12px;border:0;background:#2bc4b4;color:#04211e;font-weight:700;width:100%}#v{font-size:28px;margin-top:20px;font-variant-numeric:tabular-nums}a{color:#7fd3ff}</style></head>
+<body>
+<h2>✅ La página carga</h2>
+<p>Toca el botón y mueve el teléfono. Si los números cambian, el giroscopio funciona.</p>
+<button id="b">Activar giroscopio</button>
+<div id="v">beta: –<br>gamma: –</div>
+<p id="s"></p>
+<p><a href="./">Abrir el simulador →</a></p>
+<script>
+var got=false;
+function on(e){got=true;document.getElementById('v').innerHTML='beta: '+(e.beta==null?'null':e.beta.toFixed(1))+'°<br>gamma: '+(e.gamma==null?'null':e.gamma.toFixed(1))+'°';}
+document.getElementById('b').onclick=function(){
+  var s=document.getElementById('s');
+  function go(){window.addEventListener('deviceorientation',on);setTimeout(function(){if(!got)s.textContent='⚠ No llegan datos del sensor.';else s.textContent='✅ Giroscopio funcionando';},1500);}
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    DeviceOrientationEvent.requestPermission().then(function(r){s.textContent='Permiso: '+r;if(r==='granted')go();}).catch(function(err){s.textContent='Error de permiso: '+err;});
+  }else go();
+};
+</script></body></html>
