@@ -80,27 +80,43 @@ body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
 .hud{pointer-events:none}
 @media (orientation:landscape) and (max-height:560px){
   html,body{height:100%;overflow:hidden}
-  .wrap{max-width:none;height:100vh;height:100dvh;padding:6px 8px;grid-template-columns:minmax(150px,1fr) auto minmax(150px,1fr);grid-template-rows:auto 1fr;grid-template-areas:"banner banner banner" "colL screen colR";gap:6px 10px}
-  .colL{grid-area:colL;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
-  .colR{grid-area:colR;display:flex;flex-direction:column;gap:6px;min-height:0}
-  .colL .joy,.colR .joy{margin-top:auto}
-  .colL>*,.colR>.joy{flex-shrink:0}
-  body.ph-tube #gauges .g:nth-child(1),body.ph-tube #gauges .g:nth-child(3){display:none}
+  .wrap{display:block;max-width:none;padding:0}
   .wrap>header{display:none}
-  .screen{height:calc(100dvh - 14px);aspect-ratio:5/4;align-self:start}
+  .colL,.colR{display:contents}
+  .screen{position:fixed;inset:0;border:0;border-radius:0;box-shadow:none;z-index:1}
+  body.ph-prep .screen,body.ph-confirm .screen,body.ph-summary .screen{right:42vw}
   canvas#view{height:100%!important;width:100%}
-  .vitals{grid-template-columns:1fr 1fr;gap:4px;margin:0}
-  .vit{padding:3px 6px}.vit .v{font-size:17px}.vit.cl .v{font-size:13px;line-height:20px}
-  .hint{margin:0;font-size:12px;min-height:0;padding:5px 8px;line-height:1.25}
-  .gauges{grid-template-columns:1fr;gap:3px;margin:0}.g{font-size:10.5px}
-  #panel{overflow:auto;min-height:0;flex:0 1 auto}
-  .btn{min-height:40px;font-size:13px;flex-basis:100%;padding:6px 8px}
-  .card{padding:8px}
-  .joy{align-self:center;margin-bottom:22px;flex:none;width:104px;height:104px}.joy.v{width:70px;height:110px}.joy .knob{width:46px;height:46px}
+  .hud{left:50%;right:auto;transform:translateX(-50%);top:6px;gap:10px}
+  #hudL{display:none}
+  .banner{position:fixed;top:40px;left:50%;transform:translateX(-50%);width:60vw;z-index:6}
+  .vitals{position:fixed;top:6px;left:8px;z-index:5;grid-template-columns:repeat(4,auto);gap:4px;margin:0}
+  .vit{padding:2px 7px;background:rgba(10,16,24,.62);border-color:rgba(255,255,255,.12);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .vit .l{font-size:9px}.vit .v{font-size:16px}.vit.cl .v{font-size:12px;line-height:19px}
+  body.ph-confirm .vitals,body.ph-summary .vitals{display:none}
+  #hint{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:8px;width:calc(100vw - 330px);max-width:520px;margin:0;font-size:12px;line-height:1.25;padding:5px 9px;min-height:0;background:rgba(10,16,24,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  body.ph-prep #hint,body.ph-confirm #hint,body.ph-summary #hint{display:none}
+  #gauges{display:none!important}
+  body #mini{display:block}
+  .check{padding:4px 0;font-size:13px}
+  #joyL .jl{left:0;transform:none;text-align:left}
+  #panel{position:fixed;z-index:5;right:8px;top:8px;width:190px;max-height:calc(100dvh - 160px);overflow:auto}
+  #panel .controls{gap:5px}
+  #panel .btn{flex-basis:100%;min-height:34px;font-size:12.5px;padding:5px 8px;background:rgba(18,27,38,.72);border-color:rgba(255,255,255,.14);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  #panel .btn.pri{background:rgba(43,196,180,.88)}
+  #panel .btn.dang{background:rgba(70,22,22,.78)}
+  body.ph-prep #panel,body.ph-confirm #panel,body.ph-summary #panel{top:0;right:0;bottom:0;width:42vw;max-height:none;padding:8px;background:var(--bg)}
+  body.ph-prep #panel .btn,body.ph-confirm #panel .btn,body.ph-summary #panel .btn{flex-basis:calc(50% - 5px);background:var(--panel2)}
+  body.ph-prep #panel .btn.pri,body.ph-confirm #panel .btn.pri,body.ph-summary #panel .btn.pri{background:var(--acc);flex-basis:100%}
+  .card{padding:8px;margin-bottom:6px}
   body.ph-tube #bAdv,body.ph-tube #bRet{display:none}
-  .hint{font-size:11.5px}
-  .banner{margin:0}
+  .joy{position:fixed;z-index:5;bottom:26px;margin:0;width:118px;height:118px;background:radial-gradient(circle,rgba(29,43,56,.55) 0,rgba(18,27,38,.35) 70%);border-color:rgba(255,255,255,.22)}
+  .joy.v{width:74px;height:124px}
+  .joy .knob{width:50px;height:50px;opacity:.92}
+  #joyL{left:18px}#joyR{right:18px}
+  .joy .jl{color:#cfd8df;text-shadow:0 1px 2px #000}
 }
+#mini{display:none;position:fixed;z-index:5;top:44px;left:8px;font-size:11px;color:#dfe8ee;background:rgba(10,16,24,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:3px 7px;font-variant-numeric:tabular-nums;pointer-events:none}
+body:not(.ph-insert):not(.ph-lift):not(.ph-tube) #mini{display:none!important}
 </style>
 </head>
 <body>
@@ -131,7 +147,7 @@ body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
     <div class="g">Tubo en dientes <b id="gTv"></b><div class="bar"><div class="zone" style="left:66.6%;width:10%"></div><div class="fill" id="gT" style="background:var(--blue)"></div></div></div>
   </div>
 
-  <div class="joy v" id="joyL"><div class="knob"></div><span class="jl">Tubo ▲ avanzar / ▼ retirar</span></div>
+  <div class="joy v" id="joyL"><div class="knob"></div><span class="jl">▲ Tubo ▼</span></div>
   </div>
   <div class="screen">
     <canvas id="view"></canvas>
@@ -140,6 +156,7 @@ body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
 
   <div class="colR">
   <div id="panel"></div>
+  <div id="mini"></div>
   <div class="joy" id="joyR"><div class="knob"></div><span class="jl">Punta del tubo</span></div>
   </div>
 </div>
@@ -293,7 +310,7 @@ const JL=makeJoy($('joyL'),true),JR=makeJoy($('joyR'),false);
 $('btnFS').addEventListener('click',async()=>{try{const d=document.documentElement;if(!document.fullscreenElement){await (d.requestFullscreen?d.requestFullscreen():d.webkitRequestFullscreen());try{await screen.orientation.lock('landscape')}catch(_){}}else{await document.exitFullscreen();}}catch(_){showBanner('Este navegador no permite pantalla completa. En iPhone: Compartir → Agregar a pantalla de inicio.');}setTimeout(resize,300);});
 const V={camZ:0,camX:0,camY:0.2};
 const F=3.6;
-function U(){return W/5.5;}
+function U(){return Math.min(W,H*1.25)/5.5;}
 function P(x,y,z){const dist=z-V.camZ;if(dist<0.15)return null;const k=F/dist*U();return {x:W/2+(x-V.camX)*k,y:H*0.42+(V.camY-y)*k,k};}
 
 // random but fixed vessels
@@ -368,7 +385,7 @@ function drawScene(){
   // glare
   g=ctx.createRadialGradient(W*0.3,H*0.2,2,W*0.3,H*0.2,W*0.5);g.addColorStop(0,'rgba(255,255,255,.12)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   // vignette
-  g=ctx.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.75)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H*1.25)*0.3,W/2,H/2,Math.max(W,H*1.25)*0.7);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.75)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
   if(S.leverOn){ctx.fillStyle='rgba(255,40,40,.18)';ctx.fillRect(0,0,W,H);}
 }
 function drawGlottis(v){
@@ -425,7 +442,7 @@ function drawTongueBlade(v){
     ctx.fillStyle='rgba(255,210,200,.18)';for(let i=0;i<26;i++){const x=(i*73)%W,y=((i*41)%100)/100*edge*0.9;ell(x,y,1.6,1.2);ctx.fill();}
     // blade tip
     if(v.tipZ>2.6){
-      const bw=W*0.24,by=H*0.1;const g2=ctx.createLinearGradient(0,-10,0,by);g2.addColorStop(0,'#3d4650');g2.addColorStop(0.75,'#9aa5af');g2.addColorStop(1,'#d8e0e6');
+      const BW=Math.min(W,H*1.25),bw=BW*0.24,by=BW*0.08;const g2=ctx.createLinearGradient(0,-10,0,by);g2.addColorStop(0,'#3d4650');g2.addColorStop(0.75,'#9aa5af');g2.addColorStop(1,'#d8e0e6');
       ctx.fillStyle=g2;ctx.beginPath();ctx.ellipse(W/2,-H*0.02,bw,by+H*0.02,0,0,Math.PI);ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(W/2,-H*0.02,bw*0.92,by,0,0.15,Math.PI-0.15);ctx.stroke();
     }
@@ -458,7 +475,7 @@ function drawTube(zMin,zMax){
     const p0=pts[i],p1=pts[i+1];if(p0.z>plane||p0.z<zMin||p0.z>zMax)continue;
     const a=P(p0.x,p0.y,p0.z),b=P(p1.x,p1.y,p1.z);if(!a||!b)continue;
     const cm=p0.cm;const isCuff=cm>1.0&&cm<4.2;const band=cm>5.3&&cm<6.0;
-    let w=0.75*(a.k+b.k)/2;if(isCuff)w*=S.cuff?1.9:1.25;
+    let w=0.75*(a.k+b.k)/2;if(isCuff)w*=S.cuff?1.9:1.25;w=Math.min(w,H*0.22);
     ctx.lineCap='round';
     ctx.strokeStyle=band?'rgba(20,20,24,.95)':isCuff?'rgba(190,225,255,.55)':'rgba(225,238,242,.82)';ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     if(!band){ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=w*0.18;ctx.beginPath();ctx.moveTo(a.x-w*0.18,a.y-w*0.18);ctx.lineTo(b.x-w*0.18,b.y-w*0.18);ctx.stroke();
@@ -579,6 +596,7 @@ function updateUI(){
   $('gM').style.left=(50+S.lat*50)+'%';$('gMv').textContent=lv?(Math.abs(S.lat)<0.25?'centrada':S.lat>0?'desviada der.':'desviada izq.'):'';
   $('gT').style.width=(S.A/30*100)+'%';$('gTv').textContent=S.A>0.5?S.A.toFixed(1)+' cm':'';
   $('hudL').textContent='VL · Mac 3 · intento '+S.attempts;
+  $('mini').textContent='Prof. '+Math.round(S.d*100)+'% · Elev. '+Math.round(S.lift*100)+'%'+(Math.abs(S.lat)>=0.25?(S.lat>0?' · desv. der.':' · desv. izq.'):'')+(S.phase==='tube'?' · Tubo '+S.A.toFixed(1)+' cm':'')+' · Intento '+S.attempts;
   const h=hint();const el=$('hint');el.innerHTML=h.t;el.className='hint '+(h.c||'');
   if(S.phase==='lift'||S.phase==='tube'){const b=$('bTube');if(b)b.disabled=!(S.view.pogo>0.02||S.view.aryVis);const bl=$('bLaryngo');if(bl)bl.disabled=!S.placement;}
 }
@@ -633,7 +651,7 @@ function toPhase(p){
 }
 function btn(id,label,cls,onclick,dis){return `<button class="btn ${cls||''}" id="${id}" ${dis?'disabled':''}>${label}</button>`;}
 function buildPanel(){
-  const p=$('panel'),ph=S.phase;let h='';document.body.className='ph-'+ph;
+  const p=$('panel'),ph=S.phase;let h='';document.body.className='ph-'+ph;setTimeout(resize,30);
   $('gauges').style.display=(ph==='prep'||ph==='summary')?'none':'grid';
   if(ph==='prep'){
     const it=[['succ','Succión rígida (Yankauer) lista y funcionando'],['tubo','Tubo 7.5 con estilete y balón probado'],['bvm','Bolsa-válvula-mascarilla conectada a O₂'],['capno','Capnógrafo disponible'],['preox','Preoxigenación con O₂ al 100 % (3 min)'],['pos','Posición de olfateo (alinear ejes)']];
