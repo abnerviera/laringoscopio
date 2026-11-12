@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Simulador de Videolaringoscopia e Intubación</title>
+<style>
+:root{--bg:#0b1118;--panel:#121b26;--panel2:#18232f;--line:#24313f;--txt:#e6edf3;--mut:#8b9bab;--acc:#2bc4b4;--warn:#f5b041;--bad:#ff5d5d;--ok:#4cd07d;--blue:#5aa9ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px}
+body{overscroll-behavior:none}
+.wrap{max-width:540px;margin:0 auto;padding:10px 12px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+header h1 small{display:block;font-size:11.5px;color:var(--mut);font-weight:500}
+.iconbtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:7px 10px;font-size:13px}
+.vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.vit{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 8px;line-height:1.1}
+.vit .l{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.vit .v{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.vit.spo2 .v{color:#5ff0a0}.vit.hr .v{color:#7fd3ff}.vit.t .v{color:#ffd479}.vit.cl .v{color:#e7b3ff;font-size:16px;line-height:25px;white-space:nowrap}
+.vit.alarm{animation:blink .8s infinite;border-color:var(--bad)}
+@keyframes blink{50%{background:#4a1515}}
+.screen{position:relative;border-radius:18px;overflow:hidden;background:#000;border:3px solid #26313d;box-shadow:0 0 0 1px #000,0 8px 30px rgba(0,0,0,.5)}
+canvas#view{display:block;width:100%;touch-action:none}
+.hud{position:absolute;left:8px;right:8px;top:6px;display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;color:#cfe;text-shadow:0 1px 2px #000;pointer-events:none;font-variant-numeric:tabular-nums}
+.hud .rec{color:#ff7b7b}
+.hint{min-height:42px;margin:8px 0;padding:8px 10px;border-radius:10px;background:var(--panel);border-left:4px solid var(--acc);font-size:14px;line-height:1.3}
+.hint.warn{border-left-color:var(--warn)}.hint.bad{border-left-color:var(--bad);background:#2a1414}.hint.ok{border-left-color:var(--ok)}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:8px}
+.g{font-size:11.5px;color:var(--mut)}
+.g .bar{position:relative;height:9px;border-radius:5px;background:#1e2a36;margin-top:3px;overflow:hidden}
+.g .fill{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:5px}
+.g .zone{position:absolute;top:0;bottom:0;background:rgba(76,208,125,.28);border-left:1px solid var(--ok);border-right:1px solid var(--ok)}
+.g .mark{position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;border-radius:2px;margin-left:-1.5px}
+.g b{color:var(--txt);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px}
+.btn{flex:1 1 calc(50% - 8px);min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:14.5px;font-weight:600;padding:8px 10px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.btn.full{flex-basis:100%}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#04211e}
+.btn.dang{background:#3a1717;border-color:#6b2626;color:#ffc9c9}
+.btn.on{background:#1d3b5a;border-color:var(--blue);color:#d8ecff}
+.btn:disabled{opacity:.4}
+.btn.hold:active,.btn.hold.pressed{background:var(--acc);color:#04211e}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.card h3{margin:0 0 6px;font-size:14px}
+.check{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.check:last-child{border-bottom:0}
+.check input{width:20px;height:20px;accent-color:var(--acc)}
+select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;width:100%}
+.res{font-size:13.5px;line-height:1.45}
+.res .row{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0}
+.res .row span:last-child{font-weight:600;text-align:right}
+.score{font-size:42px;font-weight:800;text-align:center;margin:4px 0}
+.fb li{margin:3px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.modal.show{display:flex}
+.sheet{background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;max-width:540px;width:100%;max-height:88vh;overflow:auto;padding:16px 16px 26px;border:1px solid var(--line)}
+.sheet h2{margin:0 0 8px;font-size:18px}
+.sheet p,.sheet li{font-size:14px;line-height:1.45;color:#d5dee6}
+.sheet .note{font-size:12.5px;color:var(--mut)}
+.row2{display:flex;gap:8px;align-items:center;margin:8px 0}
+.row2 label{flex:1;font-size:13.5px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.banner{display:none;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#3b2b10;border:1px solid #7a5a1c;font-size:12.5px;line-height:1.35;color:#ffe2a8}
+.banner.show{display:block}
+.modechip{font-size:11px;padding:3px 7px;border-radius:20px;background:#1d2b38;color:var(--mut);border:1px solid var(--line);margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Videolaringoscopia e intubación <span class="modechip" id="modeChip">táctil</span><small>Simulador de destrezas para enfermería · vía aérea adulta</small></h1>
+    <button class="iconbtn" id="btnGuide">Guía</button>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="vitals">
+    <div class="vit spo2" id="vSpo2"><div class="l">SpO₂ %</div><div class="v" id="spo2">99</div></div>
+    <div class="vit hr"><div class="l">FC lpm</div><div class="v" id="hr">86</div></div>
+    <div class="vit t" id="vT"><div class="l">Intento</div><div class="v" id="tAtt">0:00</div></div>
+    <div class="vit cl"><div class="l">C-L / POGO</div><div class="v" id="cl">–</div></div>
+  </div>
+
+  <div class="screen">
+    <canvas id="view"></canvas>
+    <div class="hud"><span id="hudL">VL · Mac 3</span><span id="hudR"><span class="rec">●</span> EN VIVO</span></div>
+  </div>
+
+  <div class="hint" id="hint">Completa la preparación y pulsa «Comenzar laringoscopia».</div>
+
+  <div class="gauges" id="gauges">
+    <div class="g">Profundidad de la hoja <b id="gDv"></b><div class="bar"><div class="zone" style="left:72.4%;width:9.5%"></div><div class="fill" id="gD"></div></div></div>
+    <div class="g">Elevación (eje del mango) <b id="gLv"></b><div class="bar"><div class="fill" id="gL" style="background:#e7b3ff"></div></div></div>
+    <div class="g">Línea media <b id="gMv"></b><div class="bar"><div class="zone" style="left:37.5%;width:25%"></div><div class="mark" id="gM" style="left:50%"></div></div></div>
+    <div class="g">Tubo en dientes <b id="gTv"></b><div class="bar"><div class="zone" style="left:66.6%;width:10%"></div><div class="fill" id="gT" style="background:var(--blue)"></div></div></div>
+  </div>
+
+  <div id="panel"></div>
+</div>
+
+<div class="modal" id="modalStart">
+  <div class="sheet">
+    <h2>Simulador de videolaringoscopio</h2>
+    <p>El teléfono es el <b>mango del laringoscopio</b>. Sostenlo vertical frente a ti, inclinado unos 45°, con la pantalla hacia tu cara (como lo sujetarías con la mano izquierda).</p>
+    <ul>
+      <li><b>Introducir la hoja:</b> inclina la parte superior del teléfono hacia adelante (alejándola de ti). Inclinación lateral = línea media.</li>
+      <li><b>Elevar:</b> sigue inclinando hacia adelante = tracción en el eje del mango. Inclinar hacia atrás = <b>palanca sobre los incisivos</b> (error).</li>
+      <li><b>Tubo:</b> la inclinación dirige la punta del tubo; mantén presionado <b>Avanzar</b>.</li>
+    </ul>
+    <p class="note">Sin giroscopio: arrastra el dedo sobre la pantalla del laringoscopio (arriba = adelante, lados = lateral).</p>
+    <div class="controls" style="margin-top:12px">
+      <button class="btn pri full" id="btnSensor">Usar giroscopio del teléfono</button>
+      <button class="btn full" id="btnTouch">Modo táctil</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalGuide">
+  <div class="sheet">
+    <h2>Guía y ajustes</h2>
+    <p><b>Secuencia:</b> preparación → inserción de la hoja hasta la vallécula → elevación en el eje del mango → paso del tubo bajo visión directa → confirmación (balón, capnografía, auscultación) → fijación.</p>
+    <p><b>Cormack-Lehane / POGO:</b> el monitor calcula el grado y el porcentaje de apertura glótica visible en tiempo real.</p>
+    <p><b>Profundidad del tubo:</b> en adulto, marca de 21–23 cm en los dientes, con la banda negra del tubo a nivel de las cuerdas. Más de 25 cm sugiere intubación selectiva del bronquio derecho.</p>
+    <p class="note">El tiempo de desaturación está comprimido para fines didácticos.</p>
+    <div class="row2"><label>Sensibilidad (grados para recorrido completo): <b id="sensV">30°</b></label></div>
+    <input type="range" id="sens" min="15" max="50" value="30">
+    <div class="row2"><label><input type="checkbox" id="invP"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR"> Invertir lateral</label></div>
+    <div class="controls" style="margin-top:10px">
+      <button class="btn" id="btnRecal">Recalibrar posición neutra</button>
+      <button class="btn" id="btnSwitch">Cambiar modo de control</button>
+      <button class="btn pri full" id="btnCloseGuide">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+
+// ---------- anatomy constants (world units ≈ cm) ----------
+const EZ=8.5, GZ=9.5, ESZ=10.1, ZPERCM=0.62, A_EPI=EZ/ZPERCM-0.1, A_GLOT=GZ/ZPERCM;
+
+// ---------- state ----------
+const S={
+  phase:'prep', mode:'touch', sens:30, invP:false, invR:false,
+  inp:{p:0,r:0}, zero:{p:0,r:0}, touch:{p:0,r:0}, gotSensor:false,
+  d:0, lat:0, lift:0, latFix:0, steerX:0, steerY:0,
+  A:0, adv:0, placement:null, lockX:0, lockY:0, block:null,
+  cuff:false, capno:false, ausc:{epi:false,izq:false,der:false}, auscTxt:{}, breaths:[], ventN:0, gastric:0,
+  spo2:99, hr:86, apneaT:0, attemptT:0, totalT:0, attempts:1, levers:0, leverOn:false,
+  bestPOGO:0, bestCL:'4', minSpo2:100, oxygenated:false, timeToTube:null, maskT:0,
+  diff:0, burp:false, prep:{succ:false,tubo:false,capno:false,bvm:false,preox:false,pos:false},
+  view:{pogo:0,cl:'4',tipZ:0,eff:0,ye:-1.35,gShift:0,epiVis:false,aryVis:false},
+  log:[], finalized:false
+};
+
+// ---------- input ----------
+function rel(){
+  let p=S.inp.p-S.zero.p, r=S.inp.r-S.zero.r;
+  if(S.invP)p=-p; if(S.invR)r=-r;
+  return {p,r};
+}
+function setZero(){S.zero.p=S.inp.p;S.zero.r=S.inp.r;}
+function onOri(e){
+  if(e.beta==null||e.gamma==null)return;
+  S.gotSensor=true;
+  const b=e.beta*Math.PI/180,g=e.gamma*Math.PI/180;
+  const topElev=Math.asin(clamp(Math.sin(b),-1,1))*180/Math.PI;          // elevación del borde superior
+  const rightDown=Math.asin(clamp(Math.cos(b)*Math.sin(g),-1,1))*180/Math.PI; // borde derecho hacia abajo
+  const tp=-topElev, tr=rightDown;   // adelante = alejar la parte superior
+  if(S.mode==='sensor'){S.inp.p+=(tp-S.inp.p)*0.3;S.inp.r+=(tr-S.inp.r)*0.3;}
+}
+async function startSensor(){
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      const res=await DeviceOrientationEvent.requestPermission();
+      if(res!=='granted'){showBanner('Permiso de movimiento denegado. Se activó el modo táctil.');setMode('touch');return;}
+    }
+  }catch(err){}
+  window.addEventListener('deviceorientation',onOri);
+  setMode('sensor');
+  setTimeout(()=>{
+    if(!S.gotSensor){
+      setMode('touch');
+      showBanner('No se reciben datos del giroscopio. Si abriste el simulador dentro de la app de Claude, el visor bloquea los sensores de movimiento: ábrelo desde una página propia en HTTPS (p. ej., GitHub Pages) en Safari o Chrome. Mientras tanto, se activó el modo táctil.');
+    }else{setTimeout(setZero,150);}
+  },1600);
+}
+function setMode(m){S.mode=m;$('modeChip').textContent=m==='sensor'?'giroscopio':'táctil';if(m==='touch'){S.inp.p=S.touch.p;S.inp.r=S.touch.r;}setZero();}
+function showBanner(t){const b=$('banner');b.textContent=t;b.classList.add('show');}
+
+// touch drag on the screen
+const cv=$('view');let drag=null;
+cv.addEventListener('pointerdown',e=>{if(S.mode!=='touch')return;drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{if(!drag||S.mode!=='touch')return;const k=60/cv.clientWidth;S.touch.p=clamp(S.touch.p-(e.clientY-drag.y)*k,-80,80);S.touch.r=clamp(S.touch.r+(e.clientX-drag.x)*k,-80,80);drag={x:e.clientX,y:e.clientY};S.inp.p=S.touch.p;S.inp.r=S.touch.r;});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>drag=null));
+window.addEventListener('keydown',e=>{
+  if(S.mode!=='touch')return;const st=2;
+  if(e.key==='ArrowUp')S.touch.p+=st;else if(e.key==='ArrowDown')S.touch.p-=st;else if(e.key==='ArrowLeft')S.touch.r-=st;else if(e.key==='ArrowRight')S.touch.r+=st;else if(e.key===' '){S.adv=1;e.preventDefault();return;}else return;
+  S.inp.p=S.touch.p;S.inp.r=S.touch.r;e.preventDefault();
+});
+window.addEventListener('keyup',e=>{if(e.key===' ')S.adv=0;});
+
+// ---------- canvas ----------
+const ctx=cv.getContext('2d');let W=400,H=320,DPR=1;
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);W=cv.clientWidth;H=Math.round(W*0.8);cv.style.height=H+'px';cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener('resize',resize);
+const V={camZ:0,camX:0,camY:0.2};
+const F=3.6;
+function U(){return W/5.5;}
+function P(x,y,z){const dist=z-V.camZ;if(dist<0.15)return null;const k=F/dist*U();return {x:W/2+(x-V.camX)*k,y:H*0.42+(V.camY-y)*k,k};}
+
+// random but fixed vessels
+const vessels=[];(function(){let s=7;const r=()=>{s=(s*9301+49297)%233280;return s/233280};for(let i=0;i<16;i++){const a=r()*Math.PI*2;vessels.push({a,r0:0.35+r()*0.2,len:0.25+r()*0.3,bend:(r()-.5)*0.8,w:0.6+r()*1.2});}})();
+
+// ---------- view computation ----------
+function computeView(){
+  const tipZ=S.d*10.5;
+  V.camZ=tipZ-3; V.camX=S.lat*1.8; V.camY=0.2+S.lift*0.25;
+  let eff;
+  if(tipZ<6.5)eff=0.1;else if(tipZ<7.6)eff=lerp(0.1,1,smooth(6.5,7.6,tipZ));else if(tipZ<=8.6)eff=1;else eff=0.85;
+  eff*=1-0.7*clamp(Math.abs(S.lat)-0.25,0,1);
+  if(!S.prep.pos)eff*=0.85;
+  const deepShift=Math.max(0,tipZ-9.2)*3.2;
+  const gShift=S.diff*0.5-(S.burp?0.5:0)+deepShift;
+  let ye=-1.35+2.5*S.lift*eff*(1-0.35*S.diff)+deepShift;
+  if(tipZ>8.7)ye=Math.max(ye,-0.2+deepShift+2.2*S.lift*(1-0.35*S.diff)); // tipo Miller
+  const gA=0.75+gShift, gP=-0.85+gShift;
+  const pa=P(0,gA,GZ),pp=P(0,gP,GZ),pe=P(0,ye,EZ),pary=P(0,gP-0.3,GZ+0.1);
+  let pogo=0,aryVis=false;
+  const epiVis=tipZ>6.3&&Math.abs(S.lat)<0.65;
+  const tongueEdge=H*lerp(0.78,0,smooth(3.5,7.2,tipZ));
+  if(pa&&pp&&pe&&tipZ>6.0){
+    const top=Math.max(pe.y,tongueEdge);
+    pogo=clamp((pp.y-top)/(pp.y-pa.y),0,1);
+    if(pp.y>H||pa.y<-H*0.2)pogo*=0.4;
+    const gx=W/2+(0-V.camX)*pp.k;
+    const off=Math.abs(gx-W/2)/(W/2);
+    pogo*=clamp(1.4-off,0,1);
+    aryVis=pary&&top<pary.y&&pary.y<H;
+  }
+  let cl='4';
+  if(pogo>=0.85)cl='1';else if(pogo>=0.4)cl='2a';else if(pogo>0.02||aryVis)cl='2b';else if(epiVis)cl='3';
+  S.view={pogo,cl,tipZ,eff,ye,gShift,gA,gP,epiVis,aryVis,tongueEdge,deepShift};
+}
+const clRank=c=>({'1':0,'2a':1,'2b':2,'3':3,'4':4})[c];
+
+// ---------- drawing ----------
+function ell(x,y,rx,ry,fill,rot){ctx.beginPath();ctx.ellipse(x,y,Math.max(rx,0.1),Math.max(ry,0.1),rot||0,0,Math.PI*2);if(fill){ctx.fillStyle=fill;ctx.fill();}}
+function drawScene(){
+  const v=S.view;
+  // pharynx background
+  const c=P(0,-0.4+v.gShift*0.6,10.6)||{x:W/2,y:H*0.42};
+  let g=ctx.createRadialGradient(c.x,c.y,4,c.x,c.y,W*0.85);
+  g.addColorStop(0,'#2a0607');g.addColorStop(0.18,'#6e1c20');g.addColorStop(0.5,'#b4504c');g.addColorStop(1,'#e59a8c');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // vessels
+  ctx.strokeStyle='rgba(120,20,30,.35)';ctx.lineCap='round';
+  vessels.forEach(o=>{const R=W*o.r0,x0=c.x+Math.cos(o.a)*R,y0=c.y+Math.sin(o.a)*R,x1=c.x+Math.cos(o.a+o.bend*0.3)*(R+W*o.len),y1=c.y+Math.sin(o.a+o.bend*0.3)*(R+W*o.len);ctx.lineWidth=o.w;ctx.beginPath();ctx.moveTo(x0,y0);ctx.quadraticCurveTo((x0+x1)/2+o.bend*20,(y0+y1)/2,x1,y1);ctx.stroke();});
+
+  // uvula & soft palate (early)
+  if(v.tipZ<7.5){
+    const pu=P(0,-1.2,4.6),pb=P(0,-2.4,4.4);
+    if(pu&&pb){
+      ctx.fillStyle='#d9746c';ctx.beginPath();ctx.moveTo(-50,pb.y+pb.k*0.2);ctx.quadraticCurveTo(W/2+(0-V.camX)*pb.k,pb.y-pb.k*1.1,W+50,pb.y+pb.k*0.2);ctx.lineTo(W+50,H+50);ctx.lineTo(-50,H+50);ctx.fill();
+      const ux=W/2+(0-V.camX)*pu.k;
+      const gr=ctx.createLinearGradient(ux,pu.y,ux,pb.y);gr.addColorStop(0,'#f0a196');gr.addColorStop(1,'#c9625b');
+      ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(ux-pu.k*0.45,pb.y);ctx.quadraticCurveTo(ux-pu.k*0.38,pu.y+pu.k*0.1,ux,pu.y);ctx.quadraticCurveTo(ux+pu.k*0.38,pu.y+pu.k*0.1,ux+pu.k*0.45,pb.y);ctx.fill();
+      ell(ux-pu.k*0.1,pu.y+pu.k*0.35,pu.k*0.07,pu.k*0.18,'rgba(255,255,255,.25)');
+    }
+  }
+  // esophagus
+  const pes=v.tipZ>4.5?P(0,v.gP-0.8,ESZ):null;
+  if(pes){const ex=pes.x;ell(ex,pes.y,pes.k*0.65,pes.k*0.26,'#8a3a3c');ell(ex,pes.y,pes.k*0.5,pes.k*0.09,'#2a0507');
+    ctx.strokeStyle='rgba(60,10,12,.6)';ctx.lineWidth=1;for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(ex+i*pes.k*0.12,pes.y-pes.k*0.2);ctx.lineTo(ex+i*pes.k*0.07,pes.y-pes.k*0.06);ctx.stroke();}}
+  if(v.tipZ>4.5)drawGlottis(v);
+  drawTube(EZ,99);
+  drawEpiglottis(v);
+  drawTube(-99,EZ);
+  drawTongueBlade(v);
+  drawMouth();
+  // glare
+  g=ctx.createRadialGradient(W*0.3,H*0.2,2,W*0.3,H*0.2,W*0.5);g.addColorStop(0,'rgba(255,255,255,.12)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // vignette
+  g=ctx.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.75)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  if(S.leverOn){ctx.fillStyle='rgba(255,40,40,.18)';ctx.fillRect(0,0,W,H);}
+}
+function drawGlottis(v){
+  const a=P(0,v.gA,GZ),l=P(-0.52,v.gP,GZ),r=P(0.52,v.gP,GZ);if(!a||!l||!r)return;
+  const k=a.k;
+  // pyriform sinuses
+  const ps1=P(-1.35,v.gP+0.35,GZ+0.2),ps2=P(1.35,v.gP+0.35,GZ+0.2);
+  if(ps1)ell(ps1.x,ps1.y,k*0.32,k*0.6,'#5a1416',0.25);if(ps2)ell(ps2.x,ps2.y,k*0.32,k*0.6,'#5a1416',-0.25);
+  // aryepiglottic folds
+  ctx.fillStyle='#cf6f69';
+  ctx.beginPath();ctx.moveTo(a.x-k*1.15,a.y-k*0.7);ctx.quadraticCurveTo(l.x-k*0.9,l.y-k*0.3,l.x-k*0.1,l.y+k*0.38);ctx.lineTo(r.x+k*0.1,r.y+k*0.38);ctx.quadraticCurveTo(r.x+k*0.9,r.y-k*0.3,a.x+k*1.15,a.y-k*0.7);ctx.lineTo(a.x+k*0.7,a.y-k*0.7);ctx.lineTo(a.x-k*0.7,a.y-k*0.7);ctx.fill();
+  // false cords (ventricular folds)
+  ctx.fillStyle='#e08a80';
+  ctx.beginPath();ctx.moveTo(a.x,a.y-k*0.15);ctx.lineTo(l.x-k*0.32,l.y+k*0.05);ctx.lineTo(r.x+k*0.32,r.y+k*0.05);ctx.closePath();ctx.fill();
+  // lumen
+  ctx.save();ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo(l.x+k*0.05,(a.y+l.y)/2,l.x+k*0.12,l.y);ctx.quadraticCurveTo(a.x,l.y+k*0.12,r.x-k*0.12,r.y);ctx.quadraticCurveTo(r.x-k*0.05,(a.y+r.y)/2,a.x,a.y);ctx.closePath();
+  const lg=ctx.createLinearGradient(0,a.y,0,l.y);lg.addColorStop(0,'#180304');lg.addColorStop(1,'#3a0b0d');ctx.fillStyle=lg;ctx.fill();ctx.clip();
+  ctx.strokeStyle='rgba(200,120,110,.35)';ctx.lineWidth=Math.max(1,k*0.04);
+  for(let i=1;i<=4;i++){const yy=lerp(a.y,l.y,0.25+i*0.15);ctx.beginPath();ctx.ellipse(a.x,yy,k*0.12*i,k*0.05*i,0,0,Math.PI);ctx.stroke();}
+  ctx.restore();
+  // true vocal cords
+  ctx.strokeStyle='#f6efe6';ctx.lineCap='round';ctx.lineWidth=Math.max(2,k*0.11);
+  ctx.beginPath();ctx.moveTo(a.x,a.y+k*0.03);ctx.quadraticCurveTo(l.x+k*0.05,(a.y+l.y)/2,l.x+k*0.14,l.y-k*0.02);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(a.x,a.y+k*0.03);ctx.quadraticCurveTo(r.x-k*0.05,(a.y+r.y)/2,r.x-k*0.14,r.y-k*0.02);ctx.stroke();
+  // arytenoids & corniculates
+  const al=P(-0.42,v.gP-0.22,GZ+0.1),ar=P(0.42,v.gP-0.22,GZ+0.1);
+  if(al&&ar){[al,ar].forEach(p=>{const gg=ctx.createRadialGradient(p.x-p.k*0.08,p.y-p.k*0.1,1,p.x,p.y,p.k*0.34);gg.addColorStop(0,'#f6b0a4');gg.addColorStop(1,'#c25e59');ell(p.x,p.y,p.k*0.3,p.k*0.24,gg);ell(p.x,p.y-p.k*0.05,p.k*0.1,p.k*0.08,'rgba(255,220,210,.5)');});
+    ctx.strokeStyle='rgba(90,20,22,.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a.x,al.y-al.k*0.1);ctx.lineTo(a.x,al.y+al.k*0.18);ctx.stroke();}
+}
+function drawEpiglottis(v){
+  if(v.tipZ<4.5)return;
+  const e=P(0,v.ye,EZ),bl=P(-1.05,v.ye+2.6,EZ-0.2),br=P(1.05,v.ye+2.6,EZ-0.2);if(!e||!bl||!br)return;
+  const k=e.k;
+  const lx=e.x-k*0.95,rx=e.x+k*0.95;
+  const g=ctx.createLinearGradient(0,bl.y,0,e.y);g.addColorStop(0,'#c35c58');g.addColorStop(0.7,'#e9988c');g.addColorStop(1,'#f4b4a6');
+  ctx.fillStyle=g;ctx.beginPath();
+  ctx.moveTo(bl.x,bl.y);ctx.lineTo(lx,e.y-k*0.55);ctx.quadraticCurveTo(lx-k*0.05,e.y+k*0.05,e.x,e.y+k*0.12);ctx.quadraticCurveTo(rx+k*0.05,e.y+k*0.05,rx,e.y-k*0.55);ctx.lineTo(br.x,br.y);ctx.closePath();ctx.fill();
+  // rim / curl
+  ctx.strokeStyle='#fbd0c4';ctx.lineWidth=Math.max(2,k*0.09);ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(lx+k*0.02,e.y-k*0.5);ctx.quadraticCurveTo(lx,e.y+k*0.03,e.x,e.y+k*0.1);ctx.quadraticCurveTo(rx,e.y+k*0.03,rx-k*0.02,e.y-k*0.5);ctx.stroke();
+  // median fold / vallecula shading
+  ctx.strokeStyle='rgba(140,40,40,.35)';ctx.lineWidth=Math.max(1,k*0.05);ctx.beginPath();ctx.moveTo(e.x,e.y-k*0.2);ctx.lineTo((bl.x+br.x)/2,bl.y);ctx.stroke();
+}
+function drawTongueBlade(v){
+  {
+    const pb=P(0,v.ye+2.8,EZ-0.4);
+    let edge=v.tongueEdge;if(pb&&v.tipZ>6)edge=Math.max(edge,pb.y);
+    edge=Math.max(edge,H*0.05);
+    const g=ctx.createLinearGradient(0,0,0,edge);g.addColorStop(0,'#a8423f');g.addColorStop(1,'#e0877c');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-10,-10);ctx.lineTo(W+10,-10);ctx.lineTo(W+10,edge-12);
+    const n=9;for(let i=n;i>=0;i--){const x=W*i/n;ctx.quadraticCurveTo(x+W/n/2,edge+6+((i*7)%5),x,edge-4+((i*3)%4));}
+    ctx.closePath();ctx.fill();
+    // papillae
+    ctx.fillStyle='rgba(255,210,200,.18)';for(let i=0;i<26;i++){const x=(i*73)%W,y=((i*41)%100)/100*edge*0.9;ell(x,y,1.6,1.2);ctx.fill();}
+    // blade tip
+    if(v.tipZ>2.6){
+      const bw=W*0.24,by=H*0.1;const g2=ctx.createLinearGradient(0,-10,0,by);g2.addColorStop(0,'#3d4650');g2.addColorStop(0.75,'#9aa5af');g2.addColorStop(1,'#d8e0e6');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.ellipse(W/2,-H*0.02,bw,by+H*0.02,0,0,Math.PI);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(W/2,-H*0.02,bw*0.92,by,0,0.15,Math.PI-0.15);ctx.stroke();
+    }
+  }
+}
+function drawMouth(){
+  if(V.camZ>-0.15)return;
+  const dist=-V.camZ,k=F/dist*U();const cx=W/2-V.camX*k,cy=H*0.42+V.camY*k;
+  const rx=2.3*k,ry=1.55*k;
+  ctx.save();ctx.beginPath();ctx.rect(-5,-5,W+10,H+10);ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2,true);
+  ctx.fillStyle='#b8646a';ctx.fill('evenodd');ctx.restore();
+  ctx.strokeStyle='#9b4a52';ctx.lineWidth=k*0.35;ctx.beginPath();ctx.ellipse(cx,cy,rx+k*0.15,ry+k*0.15,0,0,Math.PI*2);ctx.stroke();
+  // upper incisors
+  ctx.fillStyle='#f3eee2';
+  for(let i=-3;i<=3;i++){const ang=Math.PI*1.5+i*0.17;const tx=cx+Math.cos(ang)*rx*0.93,ty=cy+Math.sin(ang)*ry*0.93;const w=k*0.34,h=k*0.45;ctx.beginPath();ctx.roundRect?ctx.roundRect(tx-w/2,ty-h*0.2,w*0.92,h,w*0.25):ctx.rect(tx-w/2,ty-h*0.2,w*0.92,h);ctx.fill();}
+  if(S.leverOn){ctx.strokeStyle='rgba(255,60,60,.9)';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(cx,cy-ry*0.9,rx*0.4,k*0.4,0,0,Math.PI*2);ctx.stroke();}
+}
+function tubeTip(){
+  const tz=S.A*ZPERCM;
+  if(S.placement){return {x:S.lockX,y:S.lockY,z:tz};}
+  const pre=Math.max(0,13-S.A);
+  return {x:S.steerX+pre*0.4,y:S.steerY+pre*0.12,z:tz};
+}
+function drawTube(zMin,zMax){
+  if(!(S.phase==='tube')||S.A<1)return;
+  const t=tubeTip();const plane=S.placement==='trachea'?GZ:S.placement==='esophagus'?ESZ:99;
+  const N=40,len=7;const pts=[];
+  const ref=Math.min(t.z,plane);for(let i=0;i<=N;i++){const s=i/N;const z=t.z-s*len;const u=Math.max(0,ref-z)/len;const x=t.x+u*u*3.2+u*0.5,y=t.y+u*0.9;pts.push({x,y,z,cm:s*len/ZPERCM});}
+  for(let i=0;i<N;i++){
+    const p0=pts[i],p1=pts[i+1];if(p0.z>plane||p0.z<zMin||p0.z>zMax)continue;
+    const a=P(p0.x,p0.y,p0.z),b=P(p1.x,p1.y,p1.z);if(!a||!b)continue;
+    const cm=p0.cm;const isCuff=cm>1.0&&cm<4.2;const band=cm>5.3&&cm<6.0;
+    let w=0.75*(a.k+b.k)/2;if(isCuff)w*=S.cuff?1.9:1.25;
+    ctx.lineCap='round';
+    ctx.strokeStyle=band?'rgba(20,20,24,.95)':isCuff?'rgba(190,225,255,.55)':'rgba(225,238,242,.82)';ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    if(!band){ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=w*0.18;ctx.beginPath();ctx.moveTo(a.x-w*0.18,a.y-w*0.18);ctx.lineTo(b.x-w*0.18,b.y-w*0.18);ctx.stroke();
+      ctx.strokeStyle='rgba(40,110,220,.8)';ctx.lineWidth=Math.max(1,w*0.08);ctx.beginPath();ctx.moveTo(a.x+w*0.2,a.y);ctx.lineTo(b.x+w*0.2,b.y);ctx.stroke();}
+  }
+  if(t.z<=plane&&t.z>=zMin&&t.z<=zMax){const a=P(t.x,t.y,t.z);if(a){ell(a.x,a.y,a.k*0.36,a.k*0.28,'rgba(240,248,250,.9)',-0.5);ell(a.x,a.y,a.k*0.22,a.k*0.16,'rgba(60,20,22,.85)',-0.5);}}
+}
+function drawStandby(txt,sub){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#071018');g.addColorStop(1,'#0d1c28');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#2bc4b4';ctx.font='600 '+Math.round(W*0.045)+'px system-ui';ctx.textAlign='center';ctx.fillText(txt,W/2,H*0.47);
+  ctx.fillStyle='#8b9bab';ctx.font=Math.round(W*0.034)+'px system-ui';ctx.fillText(sub||'',W/2,H*0.57);
+}
+// capnography / monitor
+const capBuf=[];let capT=0;
+function capVal(t){let v=0;for(const b of S.breaths){const dt=t-b.t;if(dt<0||dt>3.2)continue;let s=0;if(dt<0.9)s=0;else if(dt<1.15)s=(dt-0.9)/0.25;else if(dt<2.6)s=1+0.06*(dt-1.15);else if(dt<2.8)s=1-(dt-2.6)/0.2;v=Math.max(v,s*b.a);}return v;}
+function drawMonitor(){
+  ctx.fillStyle='#03070a';ctx.fillRect(0,0,W,H);
+  ctx.textAlign='left';ctx.font='600 '+Math.round(W*0.032)+'px system-ui';
+  // pleth
+  ctx.fillStyle='#5ff0a0';ctx.fillText('Pleth',8,H*0.1);
+  ctx.strokeStyle='#5ff0a0';ctx.lineWidth=1.6;ctx.beginPath();
+  const hrHz=S.hr/60;for(let x=0;x<W*0.72;x+=2){const t=capT-(W*0.72-x)/(W*0.72)*6;const ph=(t*hrHz)%1;const y=H*0.26-(Math.exp(-Math.pow((ph-0.22)/0.09,2))+0.45*Math.exp(-Math.pow((ph-0.5)/0.08,2)))*H*0.12*(S.spo2>75?1:0.5);x?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+  // capno
+  ctx.fillStyle='#ffd447';ctx.fillText('CO₂ (mmHg)',8,H*0.44);
+  ctx.strokeStyle='rgba(255,212,71,.25)';ctx.lineWidth=1;[0,20,40].forEach(m=>{const y=H*0.92-m/50*H*0.42;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W*0.72,y);ctx.stroke();ctx.fillStyle='rgba(255,212,71,.5)';ctx.fillText(m,W*0.73,y+4);});
+  ctx.strokeStyle='#ffd447';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<capBuf.length;i++){const x=i/(300)*W*0.72;const y=H*0.92-capBuf[i]/50*H*0.42;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+  // numerics
+  ctx.textAlign='right';
+  ctx.fillStyle='#5ff0a0';ctx.font='700 '+Math.round(W*0.1)+'px system-ui';ctx.fillText(Math.round(S.spo2),W-10,H*0.25);
+  ctx.font='600 '+Math.round(W*0.03)+'px system-ui';ctx.fillText('SpO₂',W-10,H*0.1);
+  ctx.fillStyle='#ffd447';ctx.font='700 '+Math.round(W*0.1)+'px system-ui';
+  const et=S.capno?Math.round(lastEt()):'--';ctx.fillText(et,W-10,H*0.62);
+  ctx.font='600 '+Math.round(W*0.03)+'px system-ui';ctx.fillText('EtCO₂',W-10,H*0.44);
+  if(!S.capno){ctx.textAlign='center';ctx.fillStyle='#8b9bab';ctx.font=Math.round(W*0.034)+'px system-ui';ctx.fillText('Capnógrafo desconectado',W*0.36,H*0.72);}
+}
+function lastEt(){const b=S.breaths[S.breaths.length-1];return b?b.a*1.05:0;}
+
+// ---------- simulation step ----------
+let last=performance.now(),uiTick=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  step(dt);render();
+  uiTick+=dt;if(uiTick>0.1){uiTick=0;updateUI();}
+  requestAnimationFrame(loop);
+}
+function step(dt){
+  const ph=S.phase;
+  const active=['insert','lift','tube','confirm','mask'].includes(ph);
+  if(active)S.totalT+=dt;
+  if(['insert','lift','tube'].includes(ph))S.attemptT+=dt;
+  // oxygenation
+  if(ph==='mask'){S.maskT-=dt;S.spo2=Math.min(99,S.spo2+dt*3.5);S.apneaT=0;if(S.maskT<=0)toPhase('insert');}
+  else if(active&&!S.oxygenated){
+    S.apneaT+=dt;const safe=S.prep.preox?50:22;
+    if(S.apneaT>safe)S.spo2=Math.max(48,S.spo2-dt*(0.7+(100-S.spo2)*0.035));
+  }
+  if(S.oxygenated&&S.placement!=='trachea'){S.oxygenated=false;}
+  S.minSpo2=Math.min(S.minSpo2,S.spo2);
+  let hrT=86;if(S.spo2<88)hrT=112;if(S.spo2<72)hrT=lerp(112,48,clamp((72-S.spo2)/15,0,1));
+  S.hr+=(hrT-S.hr)*dt*0.6;
+  // inputs per phase
+  const r=rel(),sens=S.sens;
+  if(ph==='insert'){
+    S.d=clamp(r.p/sens,0,1);S.lat=clamp(r.r/(sens*0.8),-1,1);S.lift=Math.max(0,S.lift-dt*2);S.leverOn=false;
+  }else if(ph==='lift'){
+    S.lift=clamp(r.p/(sens*0.8),0,1);S.lat=clamp(S.latFix+r.r/(sens*1.6),-1,1);
+    const lev=r.p<-7;if(lev&&!S.leverOn){S.levers++;S.log.push('Palanca sobre incisivos');try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}}S.leverOn=lev;
+  }else if(ph==='tube'){
+    S.steerX=clamp(r.r/(sens*0.6),-1,1)*1.6;S.steerY=clamp(r.p/(sens*0.6),-1,1)*1.9;
+    // advance
+    if(S.adv){
+      let nA=S.A+S.adv*dt*4.2;nA=clamp(nA,0,30);
+      if(!S.placement&&S.adv>0){
+        const t=tubeTip();S.block=null;
+        if(S.A<=A_EPI&&nA>A_EPI){
+          if(t.y>S.view.ye+0.05&&S.view.tipZ>6.5){nA=A_EPI;S.block='La punta choca contra la epiglotis: dirígela más posterior (inclina hacia atrás) o mejora la elevación.';}
+        }
+        if(nA>A_GLOT){
+          const v=S.view,yA=v.gA,yP=v.gP;
+          const hw=y=>0.5*(yA-y)/(yA-yP)+0.06;
+          if(t.y<=yA&&t.y>=yP&&Math.abs(t.x)<hw(t.y)){S.placement='trachea';S.lockX=t.x;S.lockY=t.y;S.log.push('Tubo a través de las cuerdas vocales');}
+          else if(t.y<yP-0.05&&Math.abs(t.x)<0.75){S.placement='esophagus';S.lockX=t.x;S.lockY=t.y;}
+          else{nA=A_GLOT-0.05;S.block=t.y>yA?'Resistencia en la comisura anterior: dirige la punta un poco hacia atrás.':Math.abs(t.x)>=hw(clamp(t.y,yP,yA))&&t.y>=yP?'Resistencia lateral (seno piriforme / aritenoides): corrige hacia la línea media.':'Resistencia en los aritenoides: dirige la punta ligeramente hacia adelante.';}
+        }
+      }
+      if(S.placement&&nA<A_GLOT-0.3){S.placement=null;}
+      S.A=nA;
+    }
+  }
+  if(['insert','lift','tube'].includes(ph)){computeView();
+    if(S.view.tipZ>6&&clRank(S.view.cl)<clRank(S.bestCL))S.bestCL=S.view.cl;S.bestPOGO=Math.max(S.bestPOGO,S.view.pogo);}
+  // capno buffer
+  capT+=dt;if(ph==='confirm'||ph==='summary'){for(let i=0;i<Math.max(1,Math.round(dt*50));i++){capBuf.push(S.capno?capVal(capT):0);if(capBuf.length>300)capBuf.shift();}}
+}
+function render(){
+  const ph=S.phase;
+  if(ph==='prep')drawStandby('Videolaringoscopio listo','Hoja Macintosh 3 · Tubo 7.5 con estilete');
+  else if(ph==='mask')drawStandby('Ventilando con bolsa-válvula-mascarilla','Reoxigenando antes del siguiente intento…');
+  else if(ph==='confirm'||ph==='summary')drawMonitor();
+  else drawScene();
+}
+
+// ---------- UI ----------
+function fmt(t){t=Math.floor(t);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+let lastPanel='';
+function updateUI(){
+  $('spo2').textContent=Math.round(S.spo2);$('hr').textContent=Math.round(S.hr);
+  $('vSpo2').classList.toggle('alarm',S.spo2<90);
+  $('tAtt').textContent=fmt(S.attemptT);$('vT').classList.toggle('alarm',S.attemptT>30&&['insert','lift','tube'].includes(S.phase));
+  const v=S.view,lv=['insert','lift','tube'].includes(S.phase);
+  $('cl').textContent=lv&&v.tipZ>4?(v.cl+' · '+Math.round(v.pogo*100)+'%'):'–';
+  $('gD').style.width=(S.d*100)+'%';$('gDv').textContent=lv?Math.round(S.d*100)+'%':'';
+  $('gL').style.width=(S.lift*100)+'%';$('gLv').textContent=lv?Math.round(S.lift*100)+'%':'';
+  $('gM').style.left=(50+S.lat*50)+'%';$('gMv').textContent=lv?(Math.abs(S.lat)<0.25?'centrada':S.lat>0?'desviada der.':'desviada izq.'):'';
+  $('gT').style.width=(S.A/30*100)+'%';$('gTv').textContent=S.A>0.5?S.A.toFixed(1)+' cm':'';
+  $('hudL').textContent='VL · Mac 3 · intento '+S.attempts;
+  const h=hint();const el=$('hint');el.innerHTML=h.t;el.className='hint '+(h.c||'');
+  if(S.phase==='lift'||S.phase==='tube'){const b=$('bTube');if(b)b.disabled=!(S.view.pogo>0.02||S.view.aryVis);const bl=$('bLaryngo');if(bl)bl.disabled=!S.placement;}
+}
+function hint(){
+  const v=S.view,ph=S.phase;let t='',c='';
+  const warn30=S.attemptT>30?' <b style="color:#ffb3b3">· Intento &gt;30 s: considera abortar y ventilar.</b>':'';
+  if(S.spo2<90&&['insert','lift','tube'].includes(ph))return {t:'⚠ Desaturación (SpO₂ '+Math.round(S.spo2)+'%). Aborta el intento y ventila con mascarilla.',c:'bad'};
+  if(ph==='prep')return {t:'Completa la lista de preparación y pulsa «Comenzar laringoscopia».'};
+  if(ph==='mask')return {t:'Ventilando con mascarilla. El siguiente intento comienza en '+Math.ceil(S.maskT)+' s.',c:'warn'};
+  if(ph==='insert'){
+    if(S.d<0.04)t='Introduce la hoja por la comisura labial derecha: inclina el teléfono hacia adelante. Desplaza la lengua a la izquierda.';
+    else if(Math.abs(S.lat)>0.3){t='Fuera de la línea media: corrige la inclinación lateral.';c='warn';}
+    else if(v.tipZ<6.3)t='Avanza siguiendo la curvatura de la lengua. Busca la epiglotis.';
+    else if(v.tipZ<7.6)t='Epiglotis a la vista. Avanza un poco más hasta la vallécula.';
+    else if(v.tipZ<=8.6){t='✓ Punta en la vallécula. Pulsa «Fijar hoja y elevar».';c='ok';}
+    else if(v.tipZ<=9.2){t='Pasaste la vallécula (posición tipo Miller, bajo la epiglotis). Puedes retroceder un poco.';c='warn';}
+    else {t='Demasiado profundo: estás viendo el esófago. Retrocede.';c='bad';}
+    return {t:t+warn30,c};
+  }
+  if(ph==='lift'){
+    if(S.leverOn)return {t:'⚠ Palanca sobre los incisivos (inclinación hacia atrás). Eleva en el eje del mango: hacia adelante y arriba.',c:'bad'};
+    if(v.pogo>=0.85){t='✓ Vista Cormack-Lehane 1. Mantén la elevación y pulsa «Introducir tubo».';c='ok';}
+    else if(S.diff&&!S.burp&&S.lift>0.75){t='Vista limitada por laringe anterior. Prueba BURP (presión laríngea externa).';c='warn';}
+    else if(S.lift<0.6)t='Eleva en el eje del mango: inclina el teléfono hacia adelante, sin rotar la muñeca.';
+    else if(v.eff<0.7){t='La elevación no expone la glotis: reajusta la profundidad de la hoja.';c='warn';}
+    else t='Vista parcial (C-L '+v.cl+'). Puedes intubar o mejorar la vista.';
+    return {t:t+warn30,c};
+  }
+  if(ph==='tube'){
+    if(S.block)return {t:'⚠ '+S.block,c:'bad'};
+    if(S.placement==='trachea'){const A=S.A;t='Tubo a través de las cuerdas. Ajusta la profundidad: banda negra a nivel de cuerdas, 21–23 cm en dientes. Luego «Retirar laringoscopio».';c=A>=20&&A<=23.5?'ok':'warn';return {t,c};}
+    if(S.placement==='esophagus')return {t:'El tubo avanzó. Retira el laringoscopio y confirma la posición.',c:''};
+    if(S.A<9)t='Mantén presionado «Avanzar». El tubo entra por el lado derecho de la boca.';
+    else t='Dirige la punta del tubo hacia la apertura glótica con la inclinación del teléfono.';
+    return {t:t+warn30,c};
+  }
+  if(ph==='confirm'){
+    return {t:'Confirma la posición: infla el balón, conecta el capnógrafo, ventila y ausculta (epigastrio, pulmón izq. y der.).'};
+  }
+  return {t:'Revisa tu desempeño y repite el escenario.'};
+}
+
+function toPhase(p){
+  S.phase=p;setZero();
+  if(p==='insert'){S.d=0;S.lift=0;S.lat=0;S.A=0;S.placement=null;S.block=null;S.attemptT=0;S.leverOn=false;S.burp=false;}
+  if(p==='lift'){S.latFix=S.lat;}
+  if(p==='tube'){S.A=0;S.block=null;S.placement=null;}
+  if(p==='confirm'){S.oxygenated=false;}
+  buildPanel();
+}
+function btn(id,label,cls,onclick,dis){return `<button class="btn ${cls||''}" id="${id}" ${dis?'disabled':''}>${label}</button>`;}
+function buildPanel(){
+  const p=$('panel'),ph=S.phase;let h='';
+  $('gauges').style.display=(ph==='prep'||ph==='summary')?'none':'grid';
+  if(ph==='prep'){
+    const it=[['succ','Succión rígida (Yankauer) lista y funcionando'],['tubo','Tubo 7.5 con estilete y balón probado'],['bvm','Bolsa-válvula-mascarilla conectada a O₂'],['capno','Capnógrafo disponible'],['preox','Preoxigenación con O₂ al 100 % (3 min)'],['pos','Posición de olfateo (alinear ejes)']];
+    h+=`<div class="card"><h3>Preparación (SOAP-ME)</h3>${it.map(([k,l])=>`<label class="check"><input type="checkbox" data-k="${k}" ${S.prep[k]?'checked':''}> ${l}</label>`).join('')}</div>
+    <div class="card"><h3>Escenario</h3><select id="selDiff"><option value="0">Vía aérea normal</option><option value="1">Vía aérea difícil (laringe anterior)</option></select></div>
+    <div class="controls">${btn('bStart','Comenzar laringoscopia','pri full')}</div>`;
+  }else if(ph==='insert'){
+    h=`<div class="controls">${btn('bFix','Fijar hoja y elevar','pri full')}${btn('bRecal','Recalibrar','')}${btn('bAbort','Abortar y ventilar','dang')}</div>`;
+  }else if(ph==='lift'){
+    h=`<div class="controls">${btn('bTube','Introducir tubo','pri full','',true)}${S.diff?btn('bBurp','BURP','' + (S.burp?' on':'')):''}${btn('bRefix','Reajustar hoja','')}${btn('bAbort','Abortar y ventilar','dang')}</div>`;
+  }else if(ph==='tube'){
+    h=`<div class="controls">${btn('bAdv','▲ Avanzar tubo','pri hold')}${btn('bRet','▼ Retirar tubo','hold')}${btn('bLaryngo','Retirar laringoscopio y confirmar','full','',true)}${S.diff?btn('bBurp','BURP','' + (S.burp?' on':'')):''}${btn('bAbort','Abortar y ventilar','dang')}</div>`;
+  }else if(ph==='confirm'){
+    h=`<div class="controls">${btn('bCuff',S.cuff?'Balón inflado (25 cmH₂O)':'Inflar balón',S.cuff?'on':'')}${btn('bCap',S.capno?'Capnógrafo conectado':'Conectar capnógrafo',S.capno?'on':'')}${btn('bVent','Ventilar (bolsa)','pri full')}
+    ${btn('bEpi','Auscultar epigastrio',S.ausc.epi?'on':'')}${btn('bIzq','Pulmón izquierdo',S.ausc.izq?'on':'')}${btn('bDer','Pulmón derecho',S.ausc.der?'on':'')}${btn('bOut','Retirar 2 cm','')}</div>
+    <div class="card res" id="auscBox" style="margin-top:8px"><h3>Hallazgos</h3><div id="auscTxt">${auscHtml()}</div><div class="row"><span>Marca en dientes</span><span>${S.A.toFixed(1)} cm</span></div></div>
+    <div class="controls">${btn('bFinish','Fijar tubo y finalizar','pri')}${btn('bExtub','Extubar y reintentar','dang')}</div>`;
+  }else if(ph==='summary'){h=summaryHtml()+`<div class="controls">${btn('bAgain','Repetir escenario','pri full')}</div>`;}
+  p.innerHTML=h;wire();
+}
+function auscHtml(){const o=S.auscTxt;const rows=[['Epigastrio',o.epi],['Pulmón izquierdo',o.izq],['Pulmón derecho',o.der],['Expansión torácica',o.chest],['Fuga',o.leak]].filter(r=>r[1]);return rows.length?rows.map(r=>`<div class="row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join(''):'<div style="color:var(--mut)">Ventila y ausculta para registrar hallazgos.</div>';}
+function on(id,ev,fn){const e=$(id);if(e)e.addEventListener(ev,fn);}
+function wire(){
+  document.querySelectorAll('#panel input[data-k]').forEach(c=>c.addEventListener('change',()=>{S.prep[c.dataset.k]=c.checked;}));
+  const sd=$('selDiff');if(sd){sd.value=String(S.diff);sd.onchange=()=>S.diff=+sd.value;}
+  on('bStart','click',()=>{S.spo2=S.prep.preox?100:96;S.minSpo2=S.spo2;S.log=[];toPhase('insert');});
+  on('bFix','click',()=>{S.log.push('Hoja fijada a '+Math.round(S.d*100)+'% de profundidad');toPhase('lift');});
+  on('bRecal','click',setZero);
+  on('bRefix','click',()=>{const d=S.d;toPhase('insert');S.attemptT=S.attemptT;S.zero.p=S.inp.p-d*S.sens*(S.invP?-1:1);});
+  on('bTube','click',()=>toPhase('tube'));
+  on('bBurp','click',()=>{S.burp=!S.burp;$('bBurp').classList.toggle('on',S.burp);});
+  on('bAbort','click',abortAttempt);
+  ['bAdv','bRet'].forEach(id=>{const e=$(id);if(!e)return;const dir=id==='bAdv'?1:-1;
+    const st=ev=>{ev.preventDefault();S.adv=dir;e.classList.add('pressed');};const en=()=>{S.adv=0;e.classList.remove('pressed');};
+    e.addEventListener('pointerdown',st);['pointerup','pointerleave','pointercancel'].forEach(x=>e.addEventListener(x,en));});
+  on('bLaryngo','click',()=>{if(!S.placement)return;S.log.push('Laringoscopio retirado; tubo a '+S.A.toFixed(1)+' cm');toPhase('confirm');});
+  on('bCuff','click',()=>{S.cuff=!S.cuff;buildPanel();});
+  on('bCap','click',()=>{S.capno=true;buildPanel();});
+  on('bVent','click',ventilate);
+  on('bEpi','click',()=>auscult('epi'));on('bIzq','click',()=>auscult('izq'));on('bDer','click',()=>auscult('der'));
+  on('bOut','click',()=>{S.A=Math.max(16,S.A-2);if(S.A<18.5)S.log.push('Tubo retirado a '+S.A.toFixed(1)+' cm (balón a nivel de cuerdas)');S.auscTxt={};S.ausc={epi:false,izq:false,der:false};buildPanel();});
+  on('bExtub','click',()=>{S.log.push('Extubación y nuevo intento');S.attempts++;resetTube();S.phase='mask';S.maskT=6;buildPanel();});
+  on('bFinish','click',()=>{S.finalized=true;toPhase('summary');});
+  on('bAgain','click',()=>{Object.assign(S,{attempts:1,levers:0,bestPOGO:0,bestCL:'4',minSpo2:100,timeToTube:null,totalT:0,attemptT:0,apneaT:0,spo2:99,hr:86,oxygenated:false,finalized:false,breaths:[],ventN:0,gastric:0,log:[]});resetTube();toPhase('prep');});
+}
+function resetTube(){S.A=0;S.placement=null;S.cuff=false;S.capno=false;S.ausc={epi:false,izq:false,der:false};S.auscTxt={};S.breaths=[];S.ventN=0;}
+function abortAttempt(){S.attempts++;S.log.push('Intento abortado ('+fmt(S.attemptT)+')');resetTube();S.phase='mask';S.maskT=6;S.attemptT=0;buildPanel();}
+function mainstem(){return S.placement==='trachea'&&S.A>25;}
+function ventilate(){
+  S.ventN++;let a=0;
+  if(S.placement==='trachea'){
+    a=(S.cuff?38:29)+Math.random()*3;S.oxygenated=true;S.apneaT=0;S.spo2=Math.min(99,S.spo2+(mainstem()?1.2:S.cuff?2.6:1.6));
+    if(S.timeToTube==null)S.timeToTube=S.totalT;
+    S.auscTxt.chest=mainstem()?'Asimétrica (mayor a la derecha)':'Simétrica bilateral';
+    S.auscTxt.leak=S.cuff?'':'Fuga audible por la boca';
+  }else{
+    const n=S.breaths.filter(b=>b.esoph).length;a=[13,7,3,1][n]||0;S.gastric++;
+    S.auscTxt.chest='Mínima o ausente; distensión abdominal';S.auscTxt.leak='';
+  }
+  S.breaths.push({t:capT,a,esoph:S.placement!=='trachea'});if(S.breaths.length>12)S.breaths.shift();
+  if(S.capno)S.capnoSeen=true;
+  buildPanel();
+}
+function auscult(site){
+  S.ausc[site]=true;
+  if(S.ventN===0){S.auscTxt[site]='Ventila mientras auscultas';buildPanel();return;}
+  let r;
+  if(S.placement==='esophagus')r=site==='epi'?'Gorgoteo con cada ventilación':'Murmullo vesicular ausente';
+  else if(mainstem())r=site==='epi'?'Silencio':site==='der'?'Murmullo vesicular presente':'Murmullo disminuido / ausente';
+  else r=site==='epi'?'Silencio':'Murmullo vesicular presente';
+  S.auscTxt[site]=r;buildPanel();
+}
+function summaryHtml(){
+  let sc=100;const fb=[];
+  const miss=Object.entries(S.prep).filter(([k,v])=>!v).length;if(miss){sc-=miss*3;fb.push(`Preparación incompleta: ${miss} elemento(s) sin verificar.`);}
+  if(S.attempts>1){sc-=(S.attempts-1)*10;fb.push(`Se requirieron ${S.attempts} intentos.`);}
+  if(S.levers){sc-=Math.min(20,S.levers*5);fb.push(`${S.levers} evento(s) de palanca sobre los incisivos: eleva en el eje del mango.`);}
+  if(S.minSpo2<80){sc-=20;fb.push('Desaturación grave (SpO₂ < 80 %).');}else if(S.minSpo2<90){sc-=10;fb.push('Desaturación (SpO₂ < 90 %): aborta antes y reoxigena.');}
+  const tt=S.timeToTube;if(tt!=null){if(tt>60){sc-=10;fb.push('Tiempo hasta la primera ventilación efectiva > 60 s.');}else if(tt>45){sc-=5;fb.push('Tiempo hasta la primera ventilación efectiva > 45 s.');}}
+  let place='—';
+  if(S.placement==='esophagus'){sc-=60;place='Esófago';fb.push('<b>Intubación esofágica no reconocida: evento crítico.</b> La capnografía plana y el gorgoteo epigástrico la identifican.');}
+  else if(S.placement==='trachea'){
+    place=mainstem()?'Bronquio principal derecho':'Tráquea';
+    if(mainstem()){sc-=15;fb.push('Intubación selectiva derecha: retira el tubo hasta 21–23 cm y vuelve a auscultar.');}
+    else if(S.A<20||S.A>23.5){sc-=5;fb.push('Profundidad fuera del rango de 21–23 cm en dientes.');}
+    if(!S.cuff){sc-=10;fb.push('Balón sin inflar: fuga y riesgo de aspiración.');}
+  }
+  if(!S.capno||!S.capnoSeen){sc-=15;fb.push('No se confirmó con capnografía de onda (estándar de confirmación).');}
+  const au=Object.values(S.ausc).filter(Boolean).length;if(au<3){sc-=5;fb.push('Auscultación incompleta (epigastrio y ambos campos pulmonares).');}
+  sc=Math.max(0,Math.round(sc));if(!fb.length)fb.push('Excelente técnica: vista óptima, tubo bien colocado y confirmación completa.');
+  const col=sc>=85?'var(--ok)':sc>=65?'var(--warn)':'var(--bad)';
+  return `<div class="card"><h3>Resultado</h3><div class="score" style="color:${col}">${sc}/100</div>
+  <div class="res">
+  <div class="row"><span>Ubicación final</span><span>${place}</span></div>
+  <div class="row"><span>Profundidad en dientes</span><span>${S.A.toFixed(1)} cm</span></div>
+  <div class="row"><span>Mejor vista (C-L / POGO)</span><span>${S.bestCL} · ${Math.round(S.bestPOGO*100)} %</span></div>
+  <div class="row"><span>Intentos</span><span>${S.attempts}</span></div>
+  <div class="row"><span>Tiempo hasta ventilación efectiva</span><span>${tt!=null?fmt(tt):'—'}</span></div>
+  <div class="row"><span>SpO₂ mínima</span><span>${Math.round(S.minSpo2)} %</span></div>
+  <div class="row"><span>Palanca sobre incisivos</span><span>${S.levers}</span></div>
+  <div class="row"><span>Escenario</span><span>${S.diff?'Vía aérea difícil':'Vía aérea normal'}</span></div>
+  </div></div>
+  <div class="card"><h3>Retroalimentación</h3><ul class="fb">${fb.map(f=>`<li>${f}</li>`).join('')}</ul></div>`;
+}
+
+// ---------- modals & settings ----------
+$('btnSensor').onclick=()=>{$('modalStart').classList.remove('show');startSensor();};
+$('btnTouch').onclick=()=>{$('modalStart').classList.remove('show');setMode('touch');};
+$('btnGuide').onclick=()=>$('modalGuide').classList.add('show');
+$('btnCloseGuide').onclick=()=>$('modalGuide').classList.remove('show');
+$('btnRecal').onclick=()=>{setZero();$('modalGuide').classList.remove('show');};
+$('btnSwitch').onclick=()=>{$('modalGuide').classList.remove('show');if(S.mode==='sensor')setMode('touch');else startSensor();};
+$('sens').oninput=e=>{S.sens=+e.target.value;$('sensV').textContent=S.sens+'°';};
+$('invP').onchange=e=>S.invP=e.target.checked;$('invR').onchange=e=>S.invR=e.target.checked;
+
+resize();buildPanel();$('modalStart').classList.add('show');
+requestAnimationFrame(loop);
+// testing hook
+window.__S=S;window.__toPhase=toPhase;
+})();
+</script>
+</body>
+</html>
