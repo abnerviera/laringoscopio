@@ -95,8 +95,11 @@ body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
   body.ph-confirm .vitals,body.ph-summary .vitals{display:none}
   #hint{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:8px;width:calc(100vw - 330px);max-width:520px;margin:0;font-size:12px;line-height:1.25;padding:5px 9px;min-height:0;background:rgba(10,16,24,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
   body.ph-prep #hint,body.ph-confirm #hint,body.ph-summary #hint{display:none}
-  #gauges{display:none!important}
-  body #mini{display:block}
+  #gauges{position:fixed;z-index:5;top:46px;left:8px;width:200px;display:grid;grid-template-columns:1fr;gap:4px;margin:0;padding:6px 8px 7px;border-radius:10px;background:rgba(10,16,24,.62);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  #gauges .g{font-size:10px;color:#c9d4dc}
+  #gauges .g .bar{height:6px;margin-top:2px}
+  body.ph-prep #gauges,body.ph-confirm #gauges,body.ph-summary #gauges,body.ph-mask #gauges{display:none}
+  body #mini{display:none!important}
   .check{padding:4px 0;font-size:13px}
   #joyL .jl{left:0;transform:none;text-align:left}
   #panel{position:fixed;z-index:5;right:8px;top:8px;width:190px;max-height:calc(100dvh - 160px);overflow:auto}
