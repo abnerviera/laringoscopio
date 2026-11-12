@@ -251,8 +251,12 @@ function onOri(e){
   const b=e.beta*Math.PI/180,g=e.gamma*Math.PI/180;
   // vector "arriba" del mundo expresado en el marco del teléfono (continuo, sin plegarse en la vertical)
   let gx=-Math.cos(b)*Math.sin(g), gy=Math.sin(b), gz=Math.cos(b)*Math.cos(g);
-  let ang=0;try{ang=((screen.orientation&&screen.orientation.angle)!=null?screen.orientation.angle:(window.orientation||0))*Math.PI/180;}catch(_){}
-  const sx=gx*Math.cos(ang)-gy*Math.sin(ang), sy=gx*Math.sin(ang)+gy*Math.cos(ang); // ejes de la pantalla según la rotación
+  // Ejes de la pantalla: en horizontal, el borde superior de la pantalla es el que apunta físicamente hacia arriba.
+  // Se detecta con la gravedad (no depende del ángulo que reporte el navegador, que varía entre iOS y Android).
+  const land=window.innerWidth>window.innerHeight;
+  if(S.axKey!==(land?'L':'P')||S.axSign==null){S.axKey=land?'L':'P';S.axSign=land?(gx>=0?1:-1):(gy>=0?1:-1);}
+  let sx,sy;
+  if(land){sy=S.axSign*gx;sx=-S.axSign*gy;}else{sy=S.axSign*gy;sx=S.axSign*gx;}
   const tp=Math.atan2(gz,sy)*180/Math.PI;                 // adelante = alejar la parte superior (pantalla mira más hacia arriba)
   const tr=-Math.asin(clamp(sx,-1,1))*180/Math.PI;        // borde derecho hacia abajo = positivo
   S.raw={p:tp,r:tr};
@@ -293,7 +297,7 @@ window.addEventListener('keyup',e=>{if(e.key===' ')S.adv=0;});
 const ctx=cv.getContext('2d');let W=400,H=320,DPR=1;
 function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);const land=matchMedia('(orientation:landscape) and (max-height:560px)').matches;if(land){cv.style.height='';const sc=cv.parentElement;H=Math.round(sc.clientHeight);W=Math.round(sc.clientWidth);}else{W=cv.clientWidth;H=Math.round(W*0.8);cv.style.height=H+'px';}cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
 window.addEventListener('resize',()=>setTimeout(resize,60));
-function onRotate(){const r0=rel();setTimeout(()=>{resize();S.zero.p=S.inp.p-(S.invP?-r0.p:r0.p);S.zero.r=S.inp.r-(S.invR?-r0.r:r0.r);},450);}
+function onRotate(){S.axSign=null;const r0=rel();setTimeout(()=>{resize();S.zero.p=S.inp.p-(S.invP?-r0.p:r0.p);S.zero.r=S.inp.r-(S.invR?-r0.r:r0.r);},450);}
 try{screen.orientation&&screen.orientation.addEventListener('change',onRotate);}catch(_){}
 window.addEventListener('orientationchange',onRotate);
 function makeJoy(el,vertical){const k=el.querySelector('.knob');const st={x:0,y:0,id:null};
