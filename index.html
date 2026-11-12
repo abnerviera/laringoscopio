@@ -181,6 +181,7 @@ body:not(.ph-insert):not(.ph-lift):not(.ph-tube) #mini{display:none!important}
 <div class="modal" id="modalCal">
   <div class="sheet">
     <h2>Calibrar dirección</h2>
+    <p id="calOri" class="note" style="color:#2bc4b4;font-weight:600"></p>
     <p>Sostén el teléfono en tu posición neutra (como el mango del laringoscopio) y toca <b>Fijar neutro</b>. Luego verifica:</p>
     <ul><li>Inclinar la parte superior <b>hacia adelante</b> (alejándola de ti) → el punto <b>sube</b>.</li><li>Bajar el borde <b>derecho</b> → el punto va a la <b>derecha</b>.</li></ul>
     <canvas id="calCv" style="width:100%;height:190px;background:#0b1118;border-radius:12px;border:1px solid #24313f;touch-action:none"></canvas>
@@ -188,9 +189,16 @@ body:not(.ph-insert):not(.ph-lift):not(.ph-tube) #mini{display:none!important}
     <div class="row2"><label>Sensibilidad: inclinación para recorrido completo <b id="sensV2">12°</b> (menos grados = menos inclinación)</label></div>
     <input type="range" id="sens2" min="6" max="40" value="12">
     <div class="row2"><label><input type="checkbox" id="invP2"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR2"> Invertir lateral</label></div>
-    <div class="controls" style="margin-top:10px">
+    <p class="note"><b>Calibración guiada:</b> 1) posición neutra → «Fijar neutro». 2) inclina hacia adelante y, sin moverte, toca «Estoy inclinando adelante». 3) vuelve a neutro, «Fijar neutro», baja el borde derecho y toca «Estoy bajando el borde derecho».</p>
+    <p id="calStep" class="note" style="color:#ffd479;min-height:16px"></p>
+    <div class="controls" style="margin-top:6px">
       <button class="btn" id="btnCalZero">Fijar neutro</button>
+      <button class="btn" id="btnCalFwd">Estoy inclinando adelante</button>
+      <button class="btn" id="btnCalRight">Estoy bajando el borde derecho</button>
       <button class="btn pri" id="btnCalOk">Listo</button>
+    </div>
+    <p id="calDbg" class="note" style="font-size:10.5px;opacity:.7;margin-top:8px"></p>
+    <div style="display:none">
     </div>
   </div>
 </div>
@@ -226,7 +234,7 @@ const EZ=8.5, GZ=9.5, ESZ=10.1, ZPERCM=0.62, A_EPI=EZ/ZPERCM-0.1, A_GLOT=GZ/ZPER
 
 // ---------- state ----------
 const S={
-  phase:'prep', mode:'touch', sens:12, invP:false, invR:false,
+  phase:'prep', mode:'touch', sens:12, inv:{P:{p:false,r:false,cal:false},L:{p:false,r:false,cal:false}},
   inp:{p:0,r:0}, zero:{p:0,r:0}, touch:{p:0,r:0}, gotSensor:false,
   d:0, lat:0, lift:0, latFix:0, steerX:0, steerY:0,
   A:0, adv:0, placement:null, lockX:0, lockY:0, block:null,
@@ -241,9 +249,12 @@ const S={
 // ---------- input ----------
 function rel(){
   let p=S.inp.p-S.zero.p, r=S.inp.r-S.zero.r;
-  if(S.invP)p=-p; if(S.invR)r=-r;
+  const iv=S.inv[ok()];if(iv.p)p=-p; if(iv.r)r=-r;
   return {p,r};
 }
+function ok(){return window.innerWidth>window.innerHeight?'L':'P';}
+function saveInv(){try{localStorage.setItem('vlInv',JSON.stringify(S.inv))}catch(_){}}
+try{const v=JSON.parse(localStorage.getItem('vlInv')||'null');if(v&&v.P&&v.L)S.inv=v;}catch(_){}
 function setZero(){S.zero.p=S.inp.p;S.zero.r=S.inp.r;}
 function onOri(e){
   if(e.beta==null||e.gamma==null)return;
@@ -259,7 +270,7 @@ function onOri(e){
   if(land){sy=S.axSign*gx;sx=-S.axSign*gy;}else{sy=S.axSign*gy;sx=S.axSign*gx;}
   const tp=Math.atan2(gz,sy)*180/Math.PI;                 // adelante = alejar la parte superior (pantalla mira más hacia arriba)
   const tr=-Math.asin(clamp(sx,-1,1))*180/Math.PI;        // borde derecho hacia abajo = positivo
-  S.raw={p:tp,r:tr};
+  S.raw={p:tp,r:tr};let an='?';try{an=screen.orientation?screen.orientation.angle:window.orientation;}catch(_){}S.dbg={b:Math.round(e.beta),g:Math.round(e.gamma),a:an};
   if(S.mode==='sensor'){let dp=tp-S.inp.p;if(dp>180)dp-=360;if(dp<-180)dp+=360;S.inp.p+=dp*0.25;S.inp.r+=(tr-S.inp.r)*0.25;}
 }
 async function startSensor(){
@@ -297,7 +308,7 @@ window.addEventListener('keyup',e=>{if(e.key===' ')S.adv=0;});
 const ctx=cv.getContext('2d');let W=400,H=320,DPR=1;
 function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);const land=matchMedia('(orientation:landscape) and (max-height:560px)').matches;if(land){cv.style.height='';const sc=cv.parentElement;H=Math.round(sc.clientHeight);W=Math.round(sc.clientWidth);}else{W=cv.clientWidth;H=Math.round(W*0.8);cv.style.height=H+'px';}cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
 window.addEventListener('resize',()=>setTimeout(resize,60));
-function onRotate(){S.axSign=null;const r0=rel();setTimeout(()=>{resize();S.zero.p=S.inp.p-(S.invP?-r0.p:r0.p);S.zero.r=S.inp.r-(S.invR?-r0.r:r0.r);},450);}
+function onRotate(){S.axSign=null;const r0=rel();setTimeout(()=>{resize();const iv=S.inv[ok()];S.zero.p=S.inp.p-(iv.p?-r0.p:r0.p);S.zero.r=S.inp.r-(iv.r?-r0.r:r0.r);if(S.mode==='sensor'&&!iv.cal&&!calOn)openCal(true);},650);}
 try{screen.orientation&&screen.orientation.addEventListener('change',onRotate);}catch(_){}
 window.addEventListener('orientationchange',onRotate);
 function makeJoy(el,vertical){const k=el.querySelector('.knob');const st={x:0,y:0,id:null};
@@ -684,7 +695,7 @@ function wire(){
   on('bStart','click',()=>{S.spo2=S.prep.preox?100:96;S.minSpo2=S.spo2;S.log=[];toPhase('insert');});
   on('bFix','click',()=>{S.log.push('Hoja fijada a '+Math.round(S.d*100)+'% de profundidad');toPhase('lift');});
   on('bRecal','click',setZero);
-  on('bRefix','click',()=>{const d=S.d;toPhase('insert');S.attemptT=S.attemptT;S.zero.p=S.inp.p-d*S.sens*(S.invP?-1:1);});
+  on('bRefix','click',()=>{const d=S.d;toPhase('insert');S.attemptT=S.attemptT;S.zero.p=S.inp.p-d*S.sens*(S.inv[ok()].p?-1:1);});
   on('bTube','click',()=>toPhase('tube'));
   on('bBurp','click',()=>{S.burp=!S.burp;$('bBurp').classList.toggle('on',S.burp);});
   on('bAbort','click',abortAttempt);
@@ -768,7 +779,7 @@ $('btnGuide').onclick=()=>$('modalGuide').classList.add('show');
 $('btnCloseGuide').onclick=()=>$('modalGuide').classList.remove('show');
 $('btnRecal').onclick=()=>{$('modalGuide').classList.remove('show');openCal();};
 let calOn=false;
-function openCal(){$('invP2').checked=S.invP;$('invR2').checked=S.invR;$('modalCal').classList.add('show');calOn=true;setZero();calDraw();}
+function openCal(auto){const iv=S.inv[ok()];$('invP2').checked=iv.p;$('invR2').checked=iv.r;$('calOri').textContent=(ok()==='L'?'Orientación: HORIZONTAL':'Orientación: VERTICAL')+(auto?' (nueva orientación: calibra)':'');$('calStep').textContent='';$('modalCal').classList.add('show');calOn=true;setZero();calDraw();}
 function calDraw(){
   if(!calOn)return;const c=$('calCv'),x=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight,dp=Math.min(devicePixelRatio||1,2);
   if(c.width!==w*dp){c.width=w*dp;c.height=h*dp;}x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);
@@ -776,18 +787,25 @@ function calDraw(){
   x.fillStyle='#8b9bab';x.font='12px system-ui';x.textAlign='center';x.fillText('adelante',w/2,14);x.fillText('atrás',w/2,h-6);x.textAlign='left';x.fillText('izq.',6,h/2-6);x.textAlign='right';x.fillText('der.',w-6,h/2-6);
   const r=rel();const px=w/2+clamp(r.r/S.sens,-1,1)*(w/2-14),py=h/2-clamp(r.p/S.sens,-1,1)*(h/2-14);
   x.fillStyle='#2bc4b4';x.beginPath();x.arc(px,py,11,0,Math.PI*2);x.fill();
+  $('calDbg').textContent='Sensor: β '+(S.dbg?S.dbg.b:'–')+'° γ '+(S.dbg?S.dbg.g:'–')+'° · eje '+S.axKey+(S.axSign>0?'+':'-')+' · ángulo nav. '+(S.dbg?S.dbg.a:'–');
   $('calTxt').textContent='Adelante '+Math.round(r.p)+'° · Lateral '+Math.round(r.r)+'°'+(S.mode==='touch'?' (modo táctil)':'');
   requestAnimationFrame(calDraw);
 }
 $('btnCalZero').onclick=setZero;
 $('btnCalOk').onclick=()=>{calOn=false;$('modalCal').classList.remove('show');setZero();};
-$('invP2').onchange=e=>{S.invP=e.target.checked;$('invP').checked=S.invP;};
-$('invR2').onchange=e=>{S.invR=e.target.checked;$('invR').checked=S.invR;};
+$('invP2').onchange=e=>{S.inv[ok()].p=e.target.checked;saveInv();};
+$('invR2').onchange=e=>{S.inv[ok()].r=e.target.checked;saveInv();};
+function rawRel(){return {p:S.inp.p-S.zero.p,r:S.inp.r-S.zero.r};}
+$('btnCalFwd').onclick=()=>{const r=rawRel();if(Math.abs(r.p)<4){$('calStep').textContent='Inclina más hacia adelante (al menos 5°) y vuelve a tocar.';return;}
+  const iv=S.inv[ok()];iv.p=r.p<0;$('invP2').checked=iv.p;saveInv();$('calStep').textContent='✓ Adelante registrado. Vuelve a neutro, toca «Fijar neutro» y luego baja el borde derecho.';};
+$('btnCalRight').onclick=()=>{const r=rawRel();if(Math.abs(r.r)<4){$('calStep').textContent='Baja más el borde derecho (al menos 5°) y vuelve a tocar.';return;}
+  const iv=S.inv[ok()];iv.r=r.r<0;iv.cal=true;$('invR2').checked=iv.r;saveInv();$('calStep').textContent='✓ Lateral registrado. Calibración guardada para esta orientación.';};
 $('btnSwitch').onclick=()=>{$('modalGuide').classList.remove('show');if(S.mode==='sensor')setMode('touch');else startSensor();};
 function setSens(v){S.sens=+v;$('sens').value=S.sens;$('sens2').value=S.sens;$('sensV').textContent=S.sens+'°';$('sensV2').textContent=S.sens+'°';try{localStorage.setItem('vlSens',S.sens)}catch(_){}}
 $('sens').oninput=e=>setSens(e.target.value);$('sens2').oninput=e=>setSens(e.target.value);
 try{const sv=localStorage.getItem('vlSens');if(sv)setSens(sv);}catch(_){}
-$('invP').onchange=e=>S.invP=e.target.checked;$('invR').onchange=e=>S.invR=e.target.checked;
+$('invP').onchange=e=>{S.inv[ok()].p=e.target.checked;saveInv();};$('invR').onchange=e=>{S.inv[ok()].r=e.target.checked;saveInv();};
+$('btnGuide').addEventListener('click',()=>{const iv=S.inv[ok()];$('invP').checked=iv.p;$('invR').checked=iv.r;});
 
 resize();buildPanel();$('modalStart').classList.add('show');
 requestAnimationFrame(loop);
