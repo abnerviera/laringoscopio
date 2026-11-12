@@ -119,6 +119,21 @@ input[type=range]{width:100%;accent-color:var(--acc)}
   </div>
 </div>
 
+<div class="modal" id="modalCal">
+  <div class="sheet">
+    <h2>Calibrar dirección</h2>
+    <p>Sostén el teléfono en tu posición neutra (como el mango del laringoscopio) y toca <b>Fijar neutro</b>. Luego verifica:</p>
+    <ul><li>Inclinar la parte superior <b>hacia adelante</b> (alejándola de ti) → el punto <b>sube</b>.</li><li>Bajar el borde <b>derecho</b> → el punto va a la <b>derecha</b>.</li></ul>
+    <canvas id="calCv" style="width:100%;height:190px;background:#0b1118;border-radius:12px;border:1px solid #24313f;touch-action:none"></canvas>
+    <p id="calTxt" class="note" style="text-align:center;font-variant-numeric:tabular-nums">Adelante 0° · Lateral 0°</p>
+    <div class="row2"><label><input type="checkbox" id="invP2"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR2"> Invertir lateral</label></div>
+    <div class="controls" style="margin-top:10px">
+      <button class="btn" id="btnCalZero">Fijar neutro</button>
+      <button class="btn pri" id="btnCalOk">Listo</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="modalGuide">
   <div class="sheet">
     <h2>Guía y ajustes</h2>
@@ -130,7 +145,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <input type="range" id="sens" min="15" max="50" value="30">
     <div class="row2"><label><input type="checkbox" id="invP"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR"> Invertir lateral</label></div>
     <div class="controls" style="margin-top:10px">
-      <button class="btn" id="btnRecal">Recalibrar posición neutra</button>
+      <button class="btn" id="btnRecal">Calibrar / probar dirección</button>
       <button class="btn" id="btnSwitch">Cambiar modo de control</button>
       <button class="btn pri full" id="btnCloseGuide">Cerrar</button>
     </div>
@@ -173,10 +188,14 @@ function onOri(e){
   if(e.beta==null||e.gamma==null)return;
   S.gotSensor=true;
   const b=e.beta*Math.PI/180,g=e.gamma*Math.PI/180;
-  const topElev=Math.asin(clamp(Math.sin(b),-1,1))*180/Math.PI;          // elevación del borde superior
-  const rightDown=Math.asin(clamp(Math.cos(b)*Math.sin(g),-1,1))*180/Math.PI; // borde derecho hacia abajo
-  const tp=-topElev, tr=rightDown;   // adelante = alejar la parte superior
-  if(S.mode==='sensor'){S.inp.p+=(tp-S.inp.p)*0.3;S.inp.r+=(tr-S.inp.r)*0.3;}
+  // vector "arriba" del mundo expresado en el marco del teléfono (continuo, sin plegarse en la vertical)
+  let gx=-Math.cos(b)*Math.sin(g), gy=Math.sin(b), gz=Math.cos(b)*Math.cos(g);
+  let ang=0;try{ang=((screen.orientation&&screen.orientation.angle)!=null?screen.orientation.angle:(window.orientation||0))*Math.PI/180;}catch(_){}
+  const sx=gx*Math.cos(ang)+gy*Math.sin(ang), sy=-gx*Math.sin(ang)+gy*Math.cos(ang);
+  const tp=Math.atan2(gz,sy)*180/Math.PI;                 // adelante = alejar la parte superior (pantalla mira más hacia arriba)
+  const tr=-Math.asin(clamp(sx,-1,1))*180/Math.PI;        // borde derecho hacia abajo = positivo
+  S.raw={p:tp,r:tr};
+  if(S.mode==='sensor'){let dp=tp-S.inp.p;if(dp>180)dp-=360;if(dp<-180)dp+=360;S.inp.p+=dp*0.35;S.inp.r+=(tr-S.inp.r)*0.35;}
 }
 async function startSensor(){
   try{
@@ -191,7 +210,7 @@ async function startSensor(){
     if(!S.gotSensor){
       setMode('touch');
       showBanner('No se reciben datos del giroscopio. Si abriste el simulador dentro de la app de Claude, el visor bloquea los sensores de movimiento: ábrelo desde una página propia en HTTPS (p. ej., GitHub Pages) en Safari o Chrome. Mientras tanto, se activó el modo táctil.');
-    }else{setTimeout(setZero,150);}
+    }else{setTimeout(()=>{setZero();openCal();},150);}
   },1600);
 }
 function setMode(m){S.mode=m;$('modeChip').textContent=m==='sensor'?'giroscopio':'táctil';if(m==='touch'){S.inp.p=S.touch.p;S.inp.r=S.touch.r;}setZero();}
@@ -661,7 +680,23 @@ $('btnSensor').onclick=()=>{$('modalStart').classList.remove('show');startSensor
 $('btnTouch').onclick=()=>{$('modalStart').classList.remove('show');setMode('touch');};
 $('btnGuide').onclick=()=>$('modalGuide').classList.add('show');
 $('btnCloseGuide').onclick=()=>$('modalGuide').classList.remove('show');
-$('btnRecal').onclick=()=>{setZero();$('modalGuide').classList.remove('show');};
+$('btnRecal').onclick=()=>{$('modalGuide').classList.remove('show');openCal();};
+let calOn=false;
+function openCal(){$('invP2').checked=S.invP;$('invR2').checked=S.invR;$('modalCal').classList.add('show');calOn=true;setZero();calDraw();}
+function calDraw(){
+  if(!calOn)return;const c=$('calCv'),x=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight,dp=Math.min(devicePixelRatio||1,2);
+  if(c.width!==w*dp){c.width=w*dp;c.height=h*dp;}x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);
+  x.strokeStyle='#24313f';x.lineWidth=1;x.beginPath();x.moveTo(w/2,0);x.lineTo(w/2,h);x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();
+  x.fillStyle='#8b9bab';x.font='12px system-ui';x.textAlign='center';x.fillText('adelante',w/2,14);x.fillText('atrás',w/2,h-6);x.textAlign='left';x.fillText('izq.',6,h/2-6);x.textAlign='right';x.fillText('der.',w-6,h/2-6);
+  const r=rel();const px=w/2+clamp(r.r/S.sens,-1,1)*(w/2-14),py=h/2-clamp(r.p/S.sens,-1,1)*(h/2-14);
+  x.fillStyle='#2bc4b4';x.beginPath();x.arc(px,py,11,0,Math.PI*2);x.fill();
+  $('calTxt').textContent='Adelante '+Math.round(r.p)+'° · Lateral '+Math.round(r.r)+'°'+(S.mode==='touch'?' (modo táctil)':'');
+  requestAnimationFrame(calDraw);
+}
+$('btnCalZero').onclick=setZero;
+$('btnCalOk').onclick=()=>{calOn=false;$('modalCal').classList.remove('show');setZero();};
+$('invP2').onchange=e=>{S.invP=e.target.checked;$('invP').checked=S.invP;};
+$('invR2').onchange=e=>{S.invR=e.target.checked;$('invR').checked=S.invR;};
 $('btnSwitch').onclick=()=>{$('modalGuide').classList.remove('show');if(S.mode==='sensor')setMode('touch');else startSensor();};
 $('sens').oninput=e=>{S.sens=+e.target.value;$('sensV').textContent=S.sens+'°';};
 $('invP').onchange=e=>S.invP=e.target.checked;$('invR').onchange=e=>S.invR=e.target.checked;
