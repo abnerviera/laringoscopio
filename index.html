@@ -126,6 +126,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <ul><li>Inclinar la parte superior <b>hacia adelante</b> (alejándola de ti) → el punto <b>sube</b>.</li><li>Bajar el borde <b>derecho</b> → el punto va a la <b>derecha</b>.</li></ul>
     <canvas id="calCv" style="width:100%;height:190px;background:#0b1118;border-radius:12px;border:1px solid #24313f;touch-action:none"></canvas>
     <p id="calTxt" class="note" style="text-align:center;font-variant-numeric:tabular-nums">Adelante 0° · Lateral 0°</p>
+    <div class="row2"><label>Sensibilidad: inclinación para recorrido completo <b id="sensV2">12°</b> (menos grados = menos inclinación)</label></div>
+    <input type="range" id="sens2" min="6" max="40" value="12">
     <div class="row2"><label><input type="checkbox" id="invP2"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR2"> Invertir lateral</label></div>
     <div class="controls" style="margin-top:10px">
       <button class="btn" id="btnCalZero">Fijar neutro</button>
@@ -141,8 +143,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <p><b>Cormack-Lehane / POGO:</b> el monitor calcula el grado y el porcentaje de apertura glótica visible en tiempo real.</p>
     <p><b>Profundidad del tubo:</b> en adulto, marca de 21–23 cm en los dientes, con la banda negra del tubo a nivel de las cuerdas. Más de 25 cm sugiere intubación selectiva del bronquio derecho.</p>
     <p class="note">El tiempo de desaturación está comprimido para fines didácticos.</p>
-    <div class="row2"><label>Sensibilidad (grados para recorrido completo): <b id="sensV">30°</b></label></div>
-    <input type="range" id="sens" min="15" max="50" value="30">
+    <div class="row2"><label>Sensibilidad (grados para recorrido completo): <b id="sensV">12°</b></label></div>
+    <input type="range" id="sens" min="6" max="40" value="12">
     <div class="row2"><label><input type="checkbox" id="invP"> Invertir adelante/atrás</label><label><input type="checkbox" id="invR"> Invertir lateral</label></div>
     <div class="controls" style="margin-top:10px">
       <button class="btn" id="btnRecal">Calibrar / probar dirección</button>
@@ -165,7 +167,7 @@ const EZ=8.5, GZ=9.5, ESZ=10.1, ZPERCM=0.62, A_EPI=EZ/ZPERCM-0.1, A_GLOT=GZ/ZPER
 
 // ---------- state ----------
 const S={
-  phase:'prep', mode:'touch', sens:30, invP:false, invR:false,
+  phase:'prep', mode:'touch', sens:12, invP:false, invR:false,
   inp:{p:0,r:0}, zero:{p:0,r:0}, touch:{p:0,r:0}, gotSensor:false,
   d:0, lat:0, lift:0, latFix:0, steerX:0, steerY:0,
   A:0, adv:0, placement:null, lockX:0, lockY:0, block:null,
@@ -195,7 +197,7 @@ function onOri(e){
   const tp=Math.atan2(gz,sy)*180/Math.PI;                 // adelante = alejar la parte superior (pantalla mira más hacia arriba)
   const tr=-Math.asin(clamp(sx,-1,1))*180/Math.PI;        // borde derecho hacia abajo = positivo
   S.raw={p:tp,r:tr};
-  if(S.mode==='sensor'){let dp=tp-S.inp.p;if(dp>180)dp-=360;if(dp<-180)dp+=360;S.inp.p+=dp*0.35;S.inp.r+=(tr-S.inp.r)*0.35;}
+  if(S.mode==='sensor'){let dp=tp-S.inp.p;if(dp>180)dp-=360;if(dp<-180)dp+=360;S.inp.p+=dp*0.25;S.inp.r+=(tr-S.inp.r)*0.25;}
 }
 async function startSensor(){
   try{
@@ -466,8 +468,8 @@ function step(dt){
   if(ph==='insert'){
     S.d=clamp(r.p/sens,0,1);S.lat=clamp(r.r/(sens*0.8),-1,1);S.lift=Math.max(0,S.lift-dt*2);S.leverOn=false;
   }else if(ph==='lift'){
-    S.lift=clamp(r.p/(sens*0.8),0,1);S.lat=clamp(S.latFix+r.r/(sens*1.6),-1,1);
-    const lev=r.p<-7;if(lev&&!S.leverOn){S.levers++;S.log.push('Palanca sobre incisivos');try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}}S.leverOn=lev;
+    S.lift=clamp(r.p/(sens*0.7),0,1);S.lat=clamp(S.latFix+r.r/(sens*1.6),-1,1);
+    const lev=r.p<-Math.max(4,sens*0.4);if(lev&&!S.leverOn){S.levers++;S.log.push('Palanca sobre incisivos');try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}}S.leverOn=lev;
   }else if(ph==='tube'){
     S.steerX=clamp(r.r/(sens*0.6),-1,1)*1.6;S.steerY=clamp(r.p/(sens*0.6),-1,1)*1.9;
     // advance
@@ -698,7 +700,9 @@ $('btnCalOk').onclick=()=>{calOn=false;$('modalCal').classList.remove('show');se
 $('invP2').onchange=e=>{S.invP=e.target.checked;$('invP').checked=S.invP;};
 $('invR2').onchange=e=>{S.invR=e.target.checked;$('invR').checked=S.invR;};
 $('btnSwitch').onclick=()=>{$('modalGuide').classList.remove('show');if(S.mode==='sensor')setMode('touch');else startSensor();};
-$('sens').oninput=e=>{S.sens=+e.target.value;$('sensV').textContent=S.sens+'°';};
+function setSens(v){S.sens=+v;$('sens').value=S.sens;$('sens2').value=S.sens;$('sensV').textContent=S.sens+'°';$('sensV2').textContent=S.sens+'°';try{localStorage.setItem('vlSens',S.sens)}catch(_){}}
+$('sens').oninput=e=>setSens(e.target.value);$('sens2').oninput=e=>setSens(e.target.value);
+try{const sv=localStorage.getItem('vlSens');if(sv)setSens(sv);}catch(_){}
 $('invP').onchange=e=>S.invP=e.target.checked;$('invR').onchange=e=>S.invR=e.target.checked;
 
 resize();buildPanel();$('modalStart').classList.add('show');
