@@ -252,7 +252,7 @@ function onOri(e){
   // vector "arriba" del mundo expresado en el marco del teléfono (continuo, sin plegarse en la vertical)
   let gx=-Math.cos(b)*Math.sin(g), gy=Math.sin(b), gz=Math.cos(b)*Math.cos(g);
   let ang=0;try{ang=((screen.orientation&&screen.orientation.angle)!=null?screen.orientation.angle:(window.orientation||0))*Math.PI/180;}catch(_){}
-  const sx=gx*Math.cos(ang)+gy*Math.sin(ang), sy=-gx*Math.sin(ang)+gy*Math.cos(ang);
+  const sx=gx*Math.cos(ang)-gy*Math.sin(ang), sy=gx*Math.sin(ang)+gy*Math.cos(ang); // ejes de la pantalla según la rotación
   const tp=Math.atan2(gz,sy)*180/Math.PI;                 // adelante = alejar la parte superior (pantalla mira más hacia arriba)
   const tr=-Math.asin(clamp(sx,-1,1))*180/Math.PI;        // borde derecho hacia abajo = positivo
   S.raw={p:tp,r:tr};
