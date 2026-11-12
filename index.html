@@ -118,6 +118,16 @@ body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
   #joyL{left:18px}#joyR{right:18px}
   .joy .jl{color:#cfd8df;text-shadow:0 1px 2px #000}
 }
+#dirSel,#dirMini{display:none}
+@media (orientation:landscape) and (max-height:560px){
+  body.ph-insert #dirSel.show,body.ph-lift #dirSel.show,body.ph-tube #dirSel.show{display:flex}
+  body.ph-insert #dirMini.show,body.ph-lift #dirMini.show,body.ph-tube #dirMini.show{display:block}
+}
+#dirSel{position:fixed;z-index:7;right:8px;bottom:160px;width:200px;flex-direction:column;gap:5px;padding:7px;border-radius:12px;background:rgba(10,16,24,.82);border:1px solid var(--acc);box-shadow:0 4px 18px rgba(0,0,0,.5)}
+#dirSel .ds-t{font-size:11.5px;color:#dfe8ee;text-align:center}
+#dirSel .btn{min-height:34px;font-size:13px;flex:none;background:var(--panel2)}
+#dirSel .btn.sel{background:var(--acc);color:#04211e}
+#dirMini{position:fixed;z-index:7;right:8px;bottom:160px;width:38px;height:38px;border-radius:50%;background:rgba(10,16,24,.7);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:18px;line-height:1}
 #mini{display:none;position:fixed;z-index:5;top:44px;left:8px;font-size:11px;color:#dfe8ee;background:rgba(10,16,24,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:3px 7px;font-variant-numeric:tabular-nums;pointer-events:none}
 body:not(.ph-insert):not(.ph-lift):not(.ph-tube) #mini{display:none!important}
 </style>
@@ -160,6 +170,8 @@ body:not(.ph-insert):not(.ph-lift):not(.ph-tube) #mini{display:none!important}
   <div class="colR">
   <div id="panel"></div>
   <div id="mini"></div>
+  <div id="dirSel"><div class="ds-t">Para avanzar inclino el teléfono:</div><button class="btn" data-v="0">⬆ Hacia adelante</button><button class="btn" data-v="1">⬇ Hacia atrás</button></div>
+  <button id="dirMini" title="Cambiar dirección de avance">⇅</button>
   <div class="joy" id="joyR"><div class="knob"></div><span class="jl">Punta del tubo</span></div>
   </div>
 </div>
@@ -618,6 +630,9 @@ function updateUI(){
   const h=hint();const el=$('hint');el.innerHTML=h.t;el.className='hint '+(h.c||'');
   if(S.phase==='lift'||S.phase==='tube'){const b=$('bTube');if(b)b.disabled=!(S.view.pogo>0.02||S.view.aryVis);const bl=$('bLaryngo');if(bl)bl.disabled=!S.placement;}
 }
+function dirBack(){try{return ok()==='L'&&localStorage.getItem('vlDirL')==='1'}catch(_){return false}}
+function FW(){return dirBack()?'hacia atrás':'hacia adelante';}
+function BW(){return dirBack()?'hacia adelante':'hacia atrás';}
 function hint(){
   const v=S.view,ph=S.phase;let t='',c='';
   const warn30=S.attemptT>30?' <b style="color:#ffb3b3">· Intento &gt;30 s: considera abortar y ventilar.</b>':'';
@@ -625,7 +640,7 @@ function hint(){
   if(ph==='prep')return {t:'Completa la lista de preparación y pulsa «Comenzar laringoscopia».'};
   if(ph==='mask')return {t:'Ventilando con mascarilla. El siguiente intento comienza en '+Math.ceil(S.maskT)+' s.',c:'warn'};
   if(ph==='insert'){
-    if(S.d<0.04)t='Introduce la hoja por la comisura labial derecha: inclina el teléfono hacia adelante. Desplaza la lengua a la izquierda.';
+    if(S.d<0.04)t='Introduce la hoja por la comisura labial derecha: inclina el teléfono '+FW()+'. Desplaza la lengua a la izquierda.';
     else if(Math.abs(S.lat)>0.3){t='Fuera de la línea media: corrige la inclinación lateral.';c='warn';}
     else if(v.tipZ<6.3)t='Avanza siguiendo la curvatura de la lengua. Busca la epiglotis.';
     else if(v.tipZ<7.6)t='Epiglotis a la vista. Avanza un poco más hasta la vallécula.';
@@ -635,10 +650,10 @@ function hint(){
     return {t:t+warn30,c};
   }
   if(ph==='lift'){
-    if(S.leverOn)return {t:'⚠ Palanca sobre los incisivos (inclinación hacia atrás). Eleva en el eje del mango: hacia adelante y arriba.',c:'bad'};
+    if(S.leverOn)return {t:'⚠ Palanca sobre los incisivos (inclinación '+BW()+'). Eleva en el eje del mango.',c:'bad'};
     if(v.pogo>=0.85){t='✓ Vista Cormack-Lehane 1. Mantén la elevación y pulsa «Introducir tubo».';c='ok';}
     else if(S.diff&&!S.burp&&S.lift>0.75){t='Vista limitada por laringe anterior. Prueba BURP (presión laríngea externa).';c='warn';}
-    else if(S.lift<0.6)t='Eleva en el eje del mango: inclina el teléfono hacia adelante, sin rotar la muñeca.';
+    else if(S.lift<0.6)t='Eleva en el eje del mango: inclina el teléfono '+FW()+', sin rotar la muñeca.';
     else if(v.eff<0.7){t='La elevación no expone la glotis: reajusta la profundidad de la hoja.';c='warn';}
     else t='Vista parcial (C-L '+v.cl+'). Puedes intubar o mejorar la vista.';
     return {t:t+warn30,c};
@@ -795,6 +810,15 @@ function calDraw(){
   requestAnimationFrame(calDraw);
 }
 $('btnCalZero').onclick=setZero;
+function dirUI(open){const ch=(()=>{try{return localStorage.getItem('vlDirL')}catch(_){return null}})();const show=open||ch==null;
+  $('dirSel').classList.toggle('show',show);$('dirMini').classList.toggle('show',!show);
+  $('dirSel').querySelectorAll('button').forEach(b=>b.classList.toggle('sel',ch!=null&&b.dataset.v===String(+S.inv.L.p)));}
+$('dirSel').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  const r0=rel();S.inv.L.p=b.dataset.v==='1';S.inv.L.cal=true;saveInv();try{localStorage.setItem('vlDirL',b.dataset.v)}catch(_){}
+  if(ok()==='L'){const iv=S.inv.L;S.zero.p=S.inp.p-(iv.p?-r0.p:r0.p);}
+  dirUI(false);}));
+$('dirMini').addEventListener('click',()=>dirUI(true));
+dirUI(false);
 $('btnCalOk').onclick=()=>{calOn=false;$('modalCal').classList.remove('show');setZero();};
 $('invP2').onchange=e=>{S.inv[ok()].p=e.target.checked;saveInv();};
 $('invR2').onchange=e=>{S.inv[ok()].r=e.target.checked;saveInv();};
