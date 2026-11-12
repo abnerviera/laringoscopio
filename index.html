@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Simulador de Videolaringoscopia e Intubación</title>
 <style>
 :root{--bg:#0b1118;--panel:#121b26;--panel2:#18232f;--line:#24313f;--txt:#e6edf3;--mut:#8b9bab;--acc:#2bc4b4;--warn:#f5b041;--bad:#ff5d5d;--ok:#4cd07d;--blue:#5aa9ff}
@@ -65,6 +66,41 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .banner{display:none;margin:0 0 8px;padding:8px 10px;border-radius:10px;background:#3b2b10;border:1px solid #7a5a1c;font-size:12.5px;line-height:1.35;color:#ffe2a8}
 .banner.show{display:block}
 .modechip{font-size:11px;padding:3px 7px;border-radius:20px;background:#1d2b38;color:var(--mut);border:1px solid var(--line);margin-left:6px;vertical-align:middle}
+.wrap{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"header header" "banner banner" "vitals vitals" "screen screen" "hint hint" "gauges gauges" "joyL joyR" "panel panel";column-gap:10px}
+.colL,.colR{display:contents}
+.wrap>header{grid-area:header}.wrap>#banner{grid-area:banner}.vitals{grid-area:vitals}.wrap>.screen{grid-area:screen}#hint{grid-area:hint}#gauges{grid-area:gauges}#panel{grid-area:panel}#joyL{grid-area:joyL}#joyR{grid-area:joyR}
+.joy{display:none;position:relative;justify-self:center;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle,#1d2b38 0,#121b26 70%);border:2px solid #2c3d4e;touch-action:none;margin:4px 0 10px;user-select:none;-webkit-user-select:none}
+.joy.v{width:84px;border-radius:42px}
+.joy .knob{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5fe3d5,#1f8f84);box-shadow:0 3px 10px rgba(0,0,0,.6);transform:translate(-50%,-50%);pointer-events:none}
+.joy .jl{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);white-space:nowrap;font-size:10.5px;color:var(--mut);text-align:center;pointer-events:none;line-height:1.1}
+.joy.v .jl{bottom:-20px}
+body.ph-tube .joy{display:block}
+body.ph-tube #joyL,body.ph-tube #joyR{margin-bottom:28px}
+.fsbtn{pointer-events:auto;margin-left:8px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;font-size:13px;padding:1px 6px}
+.hud{pointer-events:none}
+@media (orientation:landscape) and (max-height:560px){
+  html,body{height:100%;overflow:hidden}
+  .wrap{max-width:none;height:100vh;height:100dvh;padding:6px 8px;grid-template-columns:minmax(150px,1fr) auto minmax(150px,1fr);grid-template-rows:auto 1fr;grid-template-areas:"banner banner banner" "colL screen colR";gap:6px 10px}
+  .colL{grid-area:colL;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
+  .colR{grid-area:colR;display:flex;flex-direction:column;gap:6px;min-height:0}
+  .colL .joy,.colR .joy{margin-top:auto}
+  .colL>*,.colR>.joy{flex-shrink:0}
+  body.ph-tube #gauges .g:nth-child(1),body.ph-tube #gauges .g:nth-child(3){display:none}
+  .wrap>header{display:none}
+  .screen{height:calc(100dvh - 14px);aspect-ratio:5/4;align-self:start}
+  canvas#view{height:100%!important;width:100%}
+  .vitals{grid-template-columns:1fr 1fr;gap:4px;margin:0}
+  .vit{padding:3px 6px}.vit .v{font-size:17px}.vit.cl .v{font-size:13px;line-height:20px}
+  .hint{margin:0;font-size:12px;min-height:0;padding:5px 8px;line-height:1.25}
+  .gauges{grid-template-columns:1fr;gap:3px;margin:0}.g{font-size:10.5px}
+  #panel{overflow:auto;min-height:0;flex:0 1 auto}
+  .btn{min-height:40px;font-size:13px;flex-basis:100%;padding:6px 8px}
+  .card{padding:8px}
+  .joy{align-self:center;margin-bottom:22px;flex:none;width:104px;height:104px}.joy.v{width:70px;height:110px}.joy .knob{width:46px;height:46px}
+  body.ph-tube #bAdv,body.ph-tube #bRet{display:none}
+  .hint{font-size:11.5px}
+  .banner{margin:0}
+}
 </style>
 </head>
 <body>
@@ -78,16 +114,12 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 
   <div class="banner" id="banner"></div>
 
+  <div class="colL">
   <div class="vitals">
     <div class="vit spo2" id="vSpo2"><div class="l">SpO₂ %</div><div class="v" id="spo2">99</div></div>
     <div class="vit hr"><div class="l">FC lpm</div><div class="v" id="hr">86</div></div>
     <div class="vit t" id="vT"><div class="l">Intento</div><div class="v" id="tAtt">0:00</div></div>
     <div class="vit cl"><div class="l">C-L / POGO</div><div class="v" id="cl">–</div></div>
-  </div>
-
-  <div class="screen">
-    <canvas id="view"></canvas>
-    <div class="hud"><span id="hudL">VL · Mac 3</span><span id="hudR"><span class="rec">●</span> EN VIVO</span></div>
   </div>
 
   <div class="hint" id="hint">Completa la preparación y pulsa «Comenzar laringoscopia».</div>
@@ -99,7 +131,17 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <div class="g">Tubo en dientes <b id="gTv"></b><div class="bar"><div class="zone" style="left:66.6%;width:10%"></div><div class="fill" id="gT" style="background:var(--blue)"></div></div></div>
   </div>
 
+  <div class="joy v" id="joyL"><div class="knob"></div><span class="jl">Tubo ▲ avanzar / ▼ retirar</span></div>
+  </div>
+  <div class="screen">
+    <canvas id="view"></canvas>
+    <div class="hud"><span id="hudL">VL · Mac 3</span><span id="hudR"><span class="rec">●</span> EN VIVO</span><button id="btnFS" class="fsbtn" title="Pantalla completa">⛶</button></div>
+  </div>
+
+  <div class="colR">
   <div id="panel"></div>
+  <div class="joy" id="joyR"><div class="knob"></div><span class="jl">Punta del tubo</span></div>
+  </div>
 </div>
 
 <div class="modal" id="modalStart">
@@ -109,7 +151,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <ul>
       <li><b>Introducir la hoja:</b> inclina la parte superior del teléfono hacia adelante (alejándola de ti). Inclinación lateral = línea media.</li>
       <li><b>Elevar:</b> sigue inclinando hacia adelante = tracción en el eje del mango. Inclinar hacia atrás = <b>palanca sobre los incisivos</b> (error).</li>
-      <li><b>Tubo:</b> la inclinación dirige la punta del tubo; mantén presionado <b>Avanzar</b>.</li>
+      <li><b>Tubo:</b> el teléfono sigue siendo el laringoscopio (mantén la elevación). El <b>joystick izquierdo</b> avanza o retira el tubo y el <b>joystick derecho</b> dirige la punta. Funciona mejor en <b>horizontal</b>.</li>
     </ul>
     <p class="note">Sin giroscopio: arrastra el dedo sobre la pantalla del laringoscopio (arriba = adelante, lados = lateral).</p>
     <div class="controls" style="margin-top:12px">
@@ -232,8 +274,23 @@ window.addEventListener('keyup',e=>{if(e.key===' ')S.adv=0;});
 
 // ---------- canvas ----------
 const ctx=cv.getContext('2d');let W=400,H=320,DPR=1;
-function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);W=cv.clientWidth;H=Math.round(W*0.8);cv.style.height=H+'px';cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
-window.addEventListener('resize',resize);
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2.5);const land=matchMedia('(orientation:landscape) and (max-height:560px)').matches;if(land){cv.style.height='';const sc=cv.parentElement;H=Math.round(sc.clientHeight);W=Math.round(sc.clientWidth);}else{W=cv.clientWidth;H=Math.round(W*0.8);cv.style.height=H+'px';}cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener('resize',()=>setTimeout(resize,60));
+function onRotate(){const r0=rel();setTimeout(()=>{resize();S.zero.p=S.inp.p-(S.invP?-r0.p:r0.p);S.zero.r=S.inp.r-(S.invR?-r0.r:r0.r);},450);}
+try{screen.orientation&&screen.orientation.addEventListener('change',onRotate);}catch(_){}
+window.addEventListener('orientationchange',onRotate);
+function makeJoy(el,vertical){const k=el.querySelector('.knob');const st={x:0,y:0,id:null};
+  const move=e=>{const r=el.getBoundingClientRect();const Rx=r.width/2,Ry=r.height/2,Rm=Math.min(Rx,Ry);
+    let dx=vertical?0:(e.clientX-r.left-Rx)/Rm,dy=(e.clientY-r.top-Ry)/(vertical?Ry-20:Rm);
+    const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m;}st.x=dx;st.y=dy;
+    k.style.transform='translate(calc(-50% + '+(dx*(Rx-28))+'px),calc(-50% + '+(dy*(Ry-28))+'px))';};
+  el.addEventListener('pointerdown',e=>{st.id=e.pointerId;try{el.setPointerCapture(e.pointerId)}catch(_){};move(e);e.preventDefault();});
+  el.addEventListener('pointermove',e=>{if(e.pointerId===st.id)move(e);});
+  const end=e=>{if(e.pointerId!==st.id)return;st.id=null;st.x=st.y=0;k.style.transform='translate(-50%,-50%)';};
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>el.addEventListener(t,end));
+  return st;}
+const JL=makeJoy($('joyL'),true),JR=makeJoy($('joyR'),false);
+$('btnFS').addEventListener('click',async()=>{try{const d=document.documentElement;if(!document.fullscreenElement){await (d.requestFullscreen?d.requestFullscreen():d.webkitRequestFullscreen());try{await screen.orientation.lock('landscape')}catch(_){}}else{await document.exitFullscreen();}}catch(_){showBanner('Este navegador no permite pantalla completa. En iPhone: Compartir → Agregar a pantalla de inicio.');}setTimeout(resize,300);});
 const V={camZ:0,camX:0,camY:0.2};
 const F=3.6;
 function U(){return W/5.5;}
@@ -467,18 +524,21 @@ function step(dt){
   const r=rel(),sens=S.sens;
   if(ph==='insert'){
     S.d=clamp(r.p/sens,0,1);S.lat=clamp(r.r/(sens*0.8),-1,1);S.lift=Math.max(0,S.lift-dt*2);S.leverOn=false;
-  }else if(ph==='lift'){
+  }else if(ph==='lift'||ph==='tube'){
     S.lift=clamp(r.p/(sens*0.7),0,1);S.lat=clamp(S.latFix+r.r/(sens*1.6),-1,1);
     const lev=r.p<-Math.max(4,sens*0.4);if(lev&&!S.leverOn){S.levers++;S.log.push('Palanca sobre incisivos');try{navigator.vibrate&&navigator.vibrate(120)}catch(e){}}S.leverOn=lev;
-  }else if(ph==='tube'){
-    S.steerX=clamp(r.r/(sens*0.6),-1,1)*1.6;S.steerY=clamp(r.p/(sens*0.6),-1,1)*1.9;
-    // advance
-    if(S.adv){
-      let nA=S.A+S.adv*dt*4.2;nA=clamp(nA,0,30);
-      if(!S.placement&&S.adv>0){
+  }
+  if(ph==='tube'){
+    const dz=v=>Math.abs(v)<0.12?0:(v-Math.sign(v)*0.12)/0.88;
+    S.steerX=clamp(S.steerX+dz(JR.x)*dt*2.4,-1.6,1.6);S.steerY=clamp(S.steerY-dz(JR.y)*dt*2.6,-1.9,1.9);
+    // advance (joystick izquierdo o botones)
+    const adv=S.adv||-dz(JL.y);
+    if(adv){
+      let nA=S.A+adv*dt*4.5;nA=clamp(nA,0,30);
+      if(!S.placement&&adv>0){
         const t=tubeTip();S.block=null;
         if(S.A<=A_EPI&&nA>A_EPI){
-          if(t.y>S.view.ye+0.05&&S.view.tipZ>6.5){nA=A_EPI;S.block='La punta choca contra la epiglotis: dirígela más posterior (inclina hacia atrás) o mejora la elevación.';}
+          if(t.y>S.view.ye+0.05&&S.view.tipZ>6.5){nA=A_EPI;S.block='La punta choca contra la epiglotis: dirígela más posterior (joystick derecho hacia abajo) o mejora la elevación.';}
         }
         if(nA>A_GLOT){
           const v=S.view,yA=v.gA,yP=v.gP;
@@ -551,8 +611,10 @@ function hint(){
     if(S.block)return {t:'⚠ '+S.block,c:'bad'};
     if(S.placement==='trachea'){const A=S.A;t='Tubo a través de las cuerdas. Ajusta la profundidad: banda negra a nivel de cuerdas, 21–23 cm en dientes. Luego «Retirar laringoscopio».';c=A>=20&&A<=23.5?'ok':'warn';return {t,c};}
     if(S.placement==='esophagus')return {t:'El tubo avanzó. Retira el laringoscopio y confirma la posición.',c:''};
-    if(S.A<9)t='Mantén presionado «Avanzar». El tubo entra por el lado derecho de la boca.';
-    else t='Dirige la punta del tubo hacia la apertura glótica con la inclinación del teléfono.';
+    if(S.leverOn)return {t:'⚠ Palanca sobre los incisivos. Mantén la elevación en el eje del mango.',c:'bad'};
+    if(S.lift<0.5&&S.A>5){t='Perdiste elevación: mantén el laringoscopio levantado mientras pasas el tubo.';c='warn';}
+    else if(S.A<9)t='Joystick izquierdo hacia arriba = avanzar el tubo. Entra por el lado derecho de la boca.';
+    else t='Dirige la punta hacia la glotis con el joystick derecho. Mantén la elevación con el teléfono.';
     return {t:t+warn30,c};
   }
   if(ph==='confirm'){
@@ -562,16 +624,16 @@ function hint(){
 }
 
 function toPhase(p){
-  S.phase=p;setZero();
+  S.phase=p;if(p!=='tube')setZero();
   if(p==='insert'){S.d=0;S.lift=0;S.lat=0;S.A=0;S.placement=null;S.block=null;S.attemptT=0;S.leverOn=false;S.burp=false;}
   if(p==='lift'){S.latFix=S.lat;}
-  if(p==='tube'){S.A=0;S.block=null;S.placement=null;}
+  if(p==='tube'){S.A=0;S.block=null;S.placement=null;S.steerX=0;S.steerY=0;}
   if(p==='confirm'){S.oxygenated=false;}
   buildPanel();
 }
 function btn(id,label,cls,onclick,dis){return `<button class="btn ${cls||''}" id="${id}" ${dis?'disabled':''}>${label}</button>`;}
 function buildPanel(){
-  const p=$('panel'),ph=S.phase;let h='';
+  const p=$('panel'),ph=S.phase;let h='';document.body.className='ph-'+ph;
   $('gauges').style.display=(ph==='prep'||ph==='summary')?'none':'grid';
   if(ph==='prep'){
     const it=[['succ','Succión rígida (Yankauer) lista y funcionando'],['tubo','Tubo 7.5 con estilete y balón probado'],['bvm','Bolsa-válvula-mascarilla conectada a O₂'],['capno','Capnógrafo disponible'],['preox','Preoxigenación con O₂ al 100 % (3 min)'],['pos','Posición de olfateo (alinear ejes)']];
